@@ -2,10 +2,6 @@
   "required": true,
   "package": "dev.voidfps.core.mixin",
   "compatibilityLevel": "JAVA_25",
-  "client": [
-    "LevelExtractorMixin"
-  ],
-  "injectors": {
-    "defaultRequire": 1
-  }
+  "client": ["LevelExtractorMixin", "ParticleAccessor", "SingleQuadParticleMixin"],
+  "injectors": {"defaultRequire": 1}
 }
