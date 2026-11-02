@@ -43,7 +43,7 @@ public abstract class LevelExtractorMixin {
         if (distanceSquared < 1.0) return;
 
         double worldSize = Math.max(entity.getBbWidth(), entity.getBbHeight());
-        double maxVisibleDistance = worldSize * screenHeight * VoidFpsClient.pickupProjectionScale();
+        double maxVisibleDistance = worldSize * VoidFpsClient.pickupScreenScale();
 
         // Squared comparison avoids a square-root operation for each candidate.
         if (distanceSquared > maxVisibleDistance * maxVisibleDistance) {
