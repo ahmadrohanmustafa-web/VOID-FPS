@@ -25,6 +25,8 @@ public final class VoidFpsClient implements ClientModInitializer {
 
     private static KeyMapping exportKey;
     private static KeyMapping hudKey;
+    private static KeyMapping pickupCullingKey;
+    private static KeyMapping resetCountersKey;
 
     private static int refreshCounter;
     private static String cachedText = "";
@@ -38,25 +40,35 @@ public final class VoidFpsClient implements ClientModInitializer {
                 new KeyMapping("key.voidfps.export_benchmark", InputConstants.KEY_F9, CATEGORY));
         hudKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping("key.voidfps.toggle_hud", InputConstants.KEY_F10, CATEGORY));
+        pickupCullingKey = KeyMappingHelper.registerKeyMapping(
+                new KeyMapping("key.voidfps.toggle_pickup_culling", InputConstants.KEY_F11, CATEGORY));
+        resetCountersKey = KeyMappingHelper.registerKeyMapping(
+                new KeyMapping("key.voidfps.reset_counters", InputConstants.KEY_F12, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             cachedScreenHeight = client.getWindow().getHeight();
 
             while (exportKey.consumeClick()) {
                 BenchmarkExporter.export(MONITOR);
-                if (client.player != null) {
-                    client.player.sendSystemMessage(
-                            Component.literal("VOID FPS: CSV exported to config/voidfps/"));
-                }
+                notifyPlayer(client, "VOID FPS: CSV exported to config/voidfps/");
             }
 
             while (hudKey.consumeClick()) {
                 CONFIG.hudEnabled = !CONFIG.hudEnabled;
                 CONFIG.save();
-                if (client.player != null) {
-                    client.player.sendSystemMessage(Component.literal(
-                            "VOID FPS monitor: " + (CONFIG.hudEnabled ? "ON" : "OFF")));
-                }
+                notifyPlayer(client, "VOID FPS monitor: " + (CONFIG.hudEnabled ? "ON" : "OFF"));
+            }
+
+            while (pickupCullingKey.consumeClick()) {
+                CONFIG.tinyPickupCullingEnabled = !CONFIG.tinyPickupCullingEnabled;
+                CONFIG.save();
+                notifyPlayer(client, "VOID FPS pickup culling: "
+                        + (CONFIG.tinyPickupCullingEnabled ? "ON" : "OFF"));
+            }
+
+            while (resetCountersKey.consumeClick()) {
+                PickupCullingStats.reset();
+                notifyPlayer(client, "VOID FPS pickup counters reset.");
             }
         });
 
@@ -65,7 +77,15 @@ public final class VoidFpsClient implements ClientModInitializer {
                 (graphics, delta) -> renderHud(Minecraft.getInstance(), graphics));
 
         CompatibilityManager.logDetectedMods();
-        LOGGER.info("VOID FPS Core initialized. Graphics settings are left unchanged. F9 exports frame-time data; F10 toggles the monitor.");
+        LOGGER.info("VOID FPS Core initialized. Graphics settings are left unchanged. F9 exports benchmark data, F10 toggles the monitor, F11 toggles pickup culling, F12 resets pickup counters.");
+    }
+
+    private static void notifyPlayer(Minecraft client, String message) {
+        if (client.player != null) {
+            client.player.sendSystemMessage(Component.literal(message));
+        } else {
+            LOGGER.info(message);
+        }
     }
 
     public static boolean shouldCullItemEntities() {
@@ -103,12 +123,13 @@ public final class VoidFpsClient implements ClientModInitializer {
         FrameTimeMonitor.Stats stats = MONITOR.stats();
 
         return String.format(
-                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | pickups skipped %d",
+                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | item %d / orb %d",
                 client.getFps(),
                 stats.averageFrameTimeMs(),
                 stats.p99FrameTimeMs(),
                 stats.onePercentLowFps(),
                 ram,
-                PickupCullingStats.totalStatesSkipped());
+                PickupCullingStats.itemEntityStatesSkipped(),
+                PickupCullingStats.experienceOrbStatesSkipped());
     }
 }
