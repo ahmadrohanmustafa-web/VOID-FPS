@@ -24,7 +24,7 @@ It detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling and
 
 ## Build and install
 
-Requirements: Minecraft 26.3, Fabric Loader 0.20.1+, Fabric API 0.162.0+26.3, Java 25+, and Gradle 9.6+.
+Requirements: Minecraft 26.3, Fabric Loader 0.20.1+, Fabric API 0.165.0+26.3, Java 25+, and Gradle 9.6+.
 
 Run: gradle --no-daemon clean build
 
