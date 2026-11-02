@@ -2,5 +2,6 @@
   "key.voidfps.export_benchmark": "Export VOID FPS frame-time CSV",
   "key.voidfps.toggle_hud": "Toggle VOID FPS monitor",
   "key.voidfps.toggle_pickup_culling": "Toggle VOID FPS pickup culling",
-  "key.voidfps.reset_counters": "Reset VOID FPS pickup counters"
+  "key.voidfps.reset_counters": "Reset VOID FPS render counters",
+  "key.voidfps.toggle_particle_culling": "Toggle VOID FPS tiny-particle culling"
 }
