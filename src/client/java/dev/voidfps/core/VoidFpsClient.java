@@ -112,9 +112,10 @@ public final class VoidFpsClient implements ClientModInitializer {
         FrameTimeMonitor.Stats stats = MONITOR.stats();
         ClientTickMonitor.Stats tickStats = TICK_MONITOR.stats();
         GarbageCollectionMonitor.Stats gcStats = GC_MONITOR.stats();
-        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | GC %d / %d ms | heap %d MB | pickups %d | particles %d",
+        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | spikes F:%d/%d T:%d/%d | GC %d / %d ms | heap %d MB | pickups %d | particles %d",
                 client.getFps(), stats.averageFrameTimeMs(), stats.p99FrameTimeMs(),
                 tickStats.averageMs(), tickStats.p95Ms(), stats.onePercentLowFps(),
+                stats.framesOver50Ms(), stats.framesOver100Ms(), tickStats.ticksOver50Ms(), tickStats.ticksOver100Ms(),
                 gcStats.collectionsSinceStart(), gcStats.collectionTimeMs(), ram, PickupCullingStats.totalStatesSkipped(), ParticleCullingStats.totalStatesSkipped());
     }
 }
