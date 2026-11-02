@@ -1,5 +1,6 @@
 package dev.voidfps.core.mixin;
 
+import dev.voidfps.core.PickupCullingStats;
 import dev.voidfps.core.VoidFpsClient;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.extract.LevelExtractor;
@@ -29,9 +30,11 @@ public abstract class LevelExtractorMixin {
             long chunkFadeDuration,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        if (!VoidFpsClient.shouldCullTinyPickups()) return;
         if (!(entity instanceof ItemEntity) && !(entity instanceof ExperienceOrb)) return;
         if (entity.hasCustomName()) return;
+
+        if (entity instanceof ItemEntity && !VoidFpsClient.shouldCullItemEntities()) return;
+        if (entity instanceof ExperienceOrb && !VoidFpsClient.shouldCullExperienceOrbs()) return;
 
         int screenHeight = VoidFpsClient.cachedScreenHeight();
         if (screenHeight <= 0) return;
@@ -44,6 +47,11 @@ public abstract class LevelExtractorMixin {
 
         // Squared comparison avoids a square-root operation for each candidate.
         if (distanceSquared > maxVisibleDistance * maxVisibleDistance) {
+            if (entity instanceof ItemEntity) {
+                PickupCullingStats.recordItemEntitySkipped();
+            } else {
+                PickupCullingStats.recordExperienceOrbSkipped();
+            }
             cir.setReturnValue(false);
         }
     }
