@@ -2,37 +2,37 @@
 
 Minecraft Java 26.3 · Fabric · Java 25+
 
-## Features
+## Project goal
 
-- F8 cycles Vanilla → Gaming → Extreme → Vanilla.
-- **Gaming** caps render distance at 10 and simulation distance at 6 chunks, without increasing the player's existing settings.
-- Gaming also lowers biome blending to at most 1, entity visibility distance to at most 85%, uses Fast clouds, and reduces particles by one level when the original setting is All.
-- Gaming preserves the player's entity-shadow and ambient-occlusion settings.
-- **Extreme** caps render distance at 6 and simulation distance at 4 chunks, sets biome blending to 0, entity visibility distance to at most 65%, disables clouds and entity shadows, disables ambient occlusion, and sets particles to Minimal.
-- Returning to Vanilla restores every option captured before the first profile switch: render/simulation distance, biome blending, entity distance, clouds, particles, entity shadows, and ambient occlusion.
-- F10 toggles the monitor; F9 exports the latest 240 frame intervals to config/voidfps/.
-- Monitor shows FPS, average frame time, 99th-percentile frame time, approximate Java heap occupancy, render distance, simulation distance, and profile.
+VOID FPS Core is intended to improve in-game performance while leaving the player's graphics settings unchanged, including maximum-quality settings. It must not lower render distance, simulation distance, particles, clouds, shadows, ambient occlusion, or other visual options automatically.
+
+## Current features
+
+- F9 exports the latest 240 frame intervals to `config/voidfps/`.
+- F10 toggles the performance monitor.
+- Monitor reports FPS, average frame time, 99th-percentile frame time, approximate Java heap occupancy, render distance, and simulation distance.
 - Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate them.
+- Does not change Minecraft video settings.
 
-Client-only. VOID FPS changes vanilla client graphics options only. It does not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
+## Important implementation status
+
+The current monitor and benchmark exporter are diagnostic tools; they do not themselves increase FPS. The previous Vanilla/Gaming/Extreme settings profiles have been removed because changing graphics options is not the intended optimization strategy.
+
+The next optimization work must target actual rendering or CPU/GPU workload while preserving the same visible result and all player settings. Any optimization must be implemented and build-tested before it is described as a feature. Performance gains must be measured on real hardware; no FPS multiplier is promised.
+
+Client-only. VOID FPS must not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
 
 ## Build
 
 Requirements: Minecraft 26.3, Fabric Loader 0.19.5+, Fabric API 0.164.0+26.3, Java 25+, Gradle 9.8.2.
 
-Run: gradle --no-daemon clean build
+Run: `gradle --no-daemon clean build`
 
-The remapped JAR is in build/libs/. GitHub Actions builds every push and pull request and uploads the JAR artifact.
-
-## Honest performance notes
-
-These profiles use vanilla settings to reduce rendering work; they are not a custom renderer or a guaranteed FPS multiplier. The main expected gains come from lower render/entity distances, fewer particles, simpler clouds, and reduced visual blending. Actual gains depend on the world, mods, drivers, resolution, and hardware.
-
-Gaming is the visual/performance balance. Extreme trades visual detail and view distance for lower rendering workload. Heap occupancy is not total system RAM or GPU memory. Frame-time samples are diagnostics, not a controlled benchmark. Real before/after testing on the target Intel HD 520 laptop remains necessary.
+The remapped JAR is in `build/libs/`. GitHub Actions builds every push and pull request and uploads the JAR artifact.
 
 ## Ecosystem boundaries
 
-- VOID FPS Core: in-world graphics profiles and frame-time monitoring.
+- VOID FPS Core: in-world rendering and CPU/GPU performance optimization.
 - VOID Startup: startup, loading, title screen, main menu.
 - VOID UI: HUD and inventory/container interface efficiency and customization.
 
