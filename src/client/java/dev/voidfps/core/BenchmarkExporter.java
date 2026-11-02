@@ -30,6 +30,8 @@ public final class BenchmarkExporter {
             csv.append("one_percent_low_fps,").append(format(frameStats.onePercentLowFps())).append('\n');
             csv.append("minimum_frame_time_ms,").append(format(frameStats.minimumFrameTimeMs())).append('\n');
             csv.append("maximum_frame_time_ms,").append(format(frameStats.maximumFrameTimeMs())).append('\n');
+            csv.append("frames_over_50ms,").append(frameStats.framesOver50Ms()).append('\n');
+            csv.append("frames_over_100ms,").append(frameStats.framesOver100Ms()).append('\n');
             csv.append("client_tick_sample_count,").append(tickStats.sampleCount()).append('\n');
             GarbageCollectionMonitor.Stats gcStats = VoidFpsClient.garbageCollectionStats();
             csv.append("gc_collections_since_start,").append(gcStats.collectionsSinceStart()).append('\n');
@@ -38,6 +40,8 @@ public final class BenchmarkExporter {
             csv.append("average_client_tick_ms,").append(format(tickStats.averageMs())).append('\n');
             csv.append("p95_client_tick_ms,").append(format(tickStats.p95Ms())).append('\n');
             csv.append("maximum_client_tick_ms,").append(format(tickStats.maximumMs())).append('\n');
+            csv.append("client_ticks_over_50ms,").append(tickStats.ticksOver50Ms()).append('\n');
+            csv.append("client_ticks_over_100ms,").append(tickStats.ticksOver100Ms()).append('\n');
             csv.append("item_entity_render_states_skipped,").append(PickupCullingStats.itemEntityStatesSkipped()).append('\n');
             csv.append("experience_orb_render_states_skipped,").append(PickupCullingStats.experienceOrbStatesSkipped()).append('\n');
             csv.append("particle_render_states_skipped,").append(ParticleCullingStats.totalStatesSkipped()).append('\n');
