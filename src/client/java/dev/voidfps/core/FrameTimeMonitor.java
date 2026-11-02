@@ -31,7 +31,7 @@ public final class FrameTimeMonitor {
 
     /** Calculates all commonly displayed statistics in one pass and one sort. */
     public synchronized Stats stats() {
-        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0L)
+        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0L);
 
         double sum = 0.0;
         double minimum = Double.MAX_VALUE;
