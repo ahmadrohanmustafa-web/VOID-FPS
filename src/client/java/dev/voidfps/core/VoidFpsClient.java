@@ -18,6 +18,7 @@ public final class VoidFpsClient implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final FrameTimeMonitor MONITOR = new FrameTimeMonitor();
     private static final ClientTickMonitor TICK_MONITOR = new ClientTickMonitor();
+    private static final GarbageCollectionMonitor GC_MONITOR = new GarbageCollectionMonitor();
     private static final VoidFpsConfig CONFIG = new VoidFpsConfig();
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
@@ -25,6 +26,8 @@ public final class VoidFpsClient implements ClientModInitializer {
     private static int refreshCounter;
     private static String cachedText = "";
     private static volatile int cachedScreenHeight;
+    private static volatile double cachedPickupScreenScale;
+    private static volatile double cachedParticleScreenScale;
 
     @Override
     public void onInitializeClient() {
@@ -39,6 +42,9 @@ public final class VoidFpsClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             cachedScreenHeight = client.getWindow().getHeight();
+            cachedPickupScreenScale = cachedScreenHeight * CONFIG.pickupProjectionScale();
+            cachedParticleScreenScale = cachedScreenHeight * CONFIG.particleProjectionScale();
+            GC_MONITOR.poll(System.nanoTime());
             while (exportKey.consumeClick()) {
                 BenchmarkExporter.export(MONITOR, TICK_MONITOR);
                 notifyPlayer(client, "VOID FPS: CSV exported to config/voidfps/");
@@ -87,6 +93,9 @@ public final class VoidFpsClient implements ClientModInitializer {
     public static int cachedScreenHeight() { return cachedScreenHeight; }
     public static double pickupProjectionScale() { return CONFIG.pickupProjectionScale(); }
     public static double particleProjectionScale() { return CONFIG.particleProjectionScale(); }
+    public static double pickupScreenScale() { return cachedPickupScreenScale; }
+    public static double particleScreenScale() { return cachedParticleScreenScale; }
+    public static GarbageCollectionMonitor.Stats garbageCollectionStats() { return GC_MONITOR.stats(); }
 
     private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
         MONITOR.recordFrame(System.nanoTime());
@@ -102,9 +111,10 @@ public final class VoidFpsClient implements ClientModInitializer {
         long ram = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024L * 1024L);
         FrameTimeMonitor.Stats stats = MONITOR.stats();
         ClientTickMonitor.Stats tickStats = TICK_MONITOR.stats();
-        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | heap %d MB | pickups %d | particles %d",
+        GarbageCollectionMonitor.Stats gcStats = GC_MONITOR.stats();
+        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | GC %d / %d ms | heap %d MB | pickups %d | particles %d",
                 client.getFps(), stats.averageFrameTimeMs(), stats.p99FrameTimeMs(),
                 tickStats.averageMs(), tickStats.p95Ms(), stats.onePercentLowFps(),
-                ram, PickupCullingStats.totalStatesSkipped(), ParticleCullingStats.totalStatesSkipped());
+                gcStats.collectionsSinceStart(), gcStats.collectionTimeMs(), ram, PickupCullingStats.totalStatesSkipped(), ParticleCullingStats.totalStatesSkipped());
     }
 }
