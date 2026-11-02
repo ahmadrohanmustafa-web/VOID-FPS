@@ -66,11 +66,12 @@ public final class VoidFpsClient implements ClientModInitializer {
     }
 
     private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
+        // Keep benchmark sampling active even when the optional HUD is hidden.
+        MONITOR.recordFrame(System.nanoTime());
+
         if (!CONFIG.hudEnabled || client.level == null || client.player == null) {
             return;
         }
-
-        MONITOR.recordFrame(System.nanoTime());
         if (++refreshCounter >= 8) {
             refreshCounter = 0;
             cachedText = buildHudText(client);
