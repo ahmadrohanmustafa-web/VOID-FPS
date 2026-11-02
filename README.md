@@ -18,7 +18,7 @@ Client-only. VOID FPS changes vanilla client graphics options only. It does not 
 
 ## Build
 
-Requirements: Minecraft 26.3, Fabric Loader 0.20.1+, Fabric API 0.165.0+26.3, Java 25+, Gradle 9.8.2.
+Requirements: Minecraft 26.3, Fabric Loader 0.19.5+, Fabric API 0.164.0+26.3, Java 25+, Gradle 9.8.2.
 
 Run: gradle --no-daemon clean build
 
