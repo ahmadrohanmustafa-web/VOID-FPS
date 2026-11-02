@@ -2,48 +2,58 @@
 
 Minecraft Java 26.3 · Fabric · Java 25+
 
-## Project goal
+## Objective
 
-VOID FPS Core targets in-world rendering and CPU/GPU workload while leaving the player's graphics settings unchanged, including maximum-quality settings. It does not lower render distance, simulation distance, particles, clouds, shadows, ambient occlusion, or other visual options.
+Optimize in-world rendering and CPU/GPU workload while leaving every player graphics setting unchanged, including maximum-quality settings. VOID FPS does not lower render distance, simulation distance, particle settings, clouds, shadows, ambient occlusion, or other visual options.
 
-## Current features
+## Implemented systems
 
-- Configurable subpixel culling for ordinary dropped item entities and experience orbs. Entities remain loaded and simulated; only their render-state extraction is skipped below the configured projected-size threshold.
-- Separate item-entity and experience-orb culling switches, plus a master pickup-culling switch.
-- Custom-named pickups are always preserved.
-- The projected-pixel threshold is configurable in `config/voidfps.properties`.
-- F9 exports up to 30 seconds of frame-time samples, average, p99, 1% low, minimum, maximum, and per-type pickup-culling counters to `config/voidfps/`.
-- F10 toggles the performance monitor.
-- F11 toggles the master pickup-culling feature without changing graphics settings.
-- F12 resets the pickup-culling counters.
-- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, and per-type pickup-culling activity.
-- Summary statistics reuse a fixed scratch buffer, avoiding repeated temporary-array allocation during periodic HUD refreshes.
-- Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate their systems.
+### Pickup render-state culling
+- Configurable subpixel culling for ordinary dropped item entities and experience orbs.
+- Separate item and orb switches, plus a master pickup-culling switch.
+- Custom-named pickups are preserved.
+- Entities remain loaded and simulated; only render-state extraction is skipped below the configured projected-size threshold.
 
-## Controls
+### Particle render-state culling
+- Checks projected on-screen diameter of SingleQuadParticle instances before render-state creation.
+- Subpixel particles are skipped only during rendering. Particle ticking, lifetime, movement, collision, spawning, and effects continue normally.
+- Vibration signal particles are explicitly preserved.
+- Separate enable switch and configurable threshold; F8 toggles the feature at runtime.
+- Does not change Minecraft's particle quality setting or particle spawn limit.
 
-| Key | Action |
-|---|---|
-| F9 | Export benchmark CSV |
-| F10 | Toggle performance monitor |
-| F11 | Toggle pickup culling |
-| F12 | Reset pickup counters |
+### Monitoring and benchmarking
+- F9 exports up to 30 seconds of frame-time samples, average, p99, 1% low, minimum, maximum, and culling counters to config/voidfps/.
+- F10 toggles the monitor; F11 toggles pickup culling; F12 resets render counters.
+- Monitor reports FPS, average frame time, p99, 1% low, approximate Java heap occupancy, and skipped render-state counters.
+- Summary statistics reuse a fixed scratch buffer to reduce temporary allocations during periodic HUD refreshes.
 
-All controls can be rebound in Minecraft's Controls menu.
+## Configuration
 
-## Important implementation status
+File: config/voidfps.properties
 
-The pickup visibility optimization is implemented and build-tested, but its real-world FPS impact has not yet been measured on target hardware. Culling counters measure skipped render-state extraction, not entities removed from the world. Benchmarking is diagnostic; no FPS multiplier is promised. Graphics settings remain untouched.
+- tinyPickupCullingEnabled
+- itemEntityCullingEnabled
+- experienceOrbCullingEnabled
+- minimumPickupPixels (0.25–2.0)
+- tinyParticleCullingEnabled
+- minimumParticlePixels (0.1–1.0)
+- hudEnabled
 
-Client-only. VOID FPS must not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
+Controls can be rebound in Minecraft's Controls menu.
+
+## Status and safety
+
+Optimizations are implemented and build-tested, but real-world FPS impact has not yet been measured on target hardware. Counters measure skipped render-state extraction, not entities or particles removed from the world. No FPS multiplier is promised. Graphics settings remain untouched.
+
+VOID FPS must not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
 
 ## Build
 
 Requirements: Minecraft 26.3, Fabric Loader 0.19.5+, Fabric API 0.164.0+26.3, Java 25+, Gradle 9.8.2.
 
-Run: `gradle --no-daemon clean build`
+Run: gradle --no-daemon clean build
 
-The remapped JAR is in `build/libs/`. GitHub Actions builds every push and pull request and uploads the JAR artifact.
+The remapped JAR is in build/libs/. GitHub Actions builds every push and pull request and uploads the JAR artifact.
 
 ## Ecosystem boundaries
 
