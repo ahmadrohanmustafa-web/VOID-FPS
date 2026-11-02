@@ -28,6 +28,7 @@ public final class VoidFpsClient implements ClientModInitializer {
 
     private static int refreshCounter;
     private static String cachedText = "";
+    private static volatile int cachedScreenHeight;
 
     @Override
     public void onInitializeClient() {
@@ -39,6 +40,8 @@ public final class VoidFpsClient implements ClientModInitializer {
                 new KeyMapping("key.voidfps.toggle_hud", InputConstants.KEY_F10, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            cachedScreenHeight = client.getWindow().getHeight();
+
             while (exportKey.consumeClick()) {
                 BenchmarkExporter.export(MONITOR);
                 if (client.player != null) {
@@ -63,6 +66,18 @@ public final class VoidFpsClient implements ClientModInitializer {
 
         CompatibilityManager.logDetectedMods();
         LOGGER.info("VOID FPS Core initialized. Graphics settings are left unchanged. F9 exports frame-time data; F10 toggles the monitor.");
+    }
+
+    public static boolean shouldCullTinyPickups() {
+        return CONFIG.tinyPickupCullingEnabled;
+    }
+
+    public static int cachedScreenHeight() {
+        return cachedScreenHeight;
+    }
+
+    public static double pickupProjectionScale() {
+        return CONFIG.pickupProjectionScale();
     }
 
     private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
