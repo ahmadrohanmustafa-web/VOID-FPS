@@ -1,5 +1,6 @@
 {
- "key.voidfps.cycle_profile":"Cycle VOID FPS profile",
- "key.voidfps.export_benchmark":"Export VOID FPS frame-time CSV",
- "key.voidfps.toggle_hud":"Toggle VOID FPS monitor"
+  "key.voidfps.export_benchmark": "Export VOID FPS frame-time CSV",
+  "key.voidfps.toggle_hud": "Toggle VOID FPS monitor",
+  "key.voidfps.toggle_pickup_culling": "Toggle VOID FPS pickup culling",
+  "key.voidfps.reset_counters": "Reset VOID FPS pickup counters"
 }
