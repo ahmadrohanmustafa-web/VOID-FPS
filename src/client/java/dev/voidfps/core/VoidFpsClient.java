@@ -19,12 +19,10 @@ public final class VoidFpsClient implements ClientModInitializer {
 
     private static final FrameTimeMonitor MONITOR = new FrameTimeMonitor();
     private static final VoidFpsConfig CONFIG = new VoidFpsConfig();
-    private static final ProfileController PROFILES = new ProfileController();
 
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
 
-    private static KeyMapping cycleKey;
     private static KeyMapping exportKey;
     private static KeyMapping hudKey;
 
@@ -35,18 +33,12 @@ public final class VoidFpsClient implements ClientModInitializer {
     public void onInitializeClient() {
         CONFIG.load();
 
-        cycleKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.voidfps.cycle_profile", InputConstants.KEY_F8, CATEGORY));
         exportKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping("key.voidfps.export_benchmark", InputConstants.KEY_F9, CATEGORY));
         hudKey = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping("key.voidfps.toggle_hud", InputConstants.KEY_F10, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (cycleKey.consumeClick()) {
-                PROFILES.cycle(client);
-            }
-
             while (exportKey.consumeClick()) {
                 BenchmarkExporter.export(MONITOR);
                 if (client.player != null) {
@@ -70,7 +62,7 @@ public final class VoidFpsClient implements ClientModInitializer {
                 (graphics, delta) -> renderHud(Minecraft.getInstance(), graphics));
 
         CompatibilityManager.logDetectedMods();
-        LOGGER.info("VOID FPS Core initialized. F8 profiles, F9 CSV export, F10 monitor.");
+        LOGGER.info("VOID FPS Core initialized. Graphics settings are left unchanged. F9 exports frame-time data; F10 toggles the monitor.");
     }
 
     private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
@@ -91,8 +83,7 @@ public final class VoidFpsClient implements ClientModInitializer {
                 / (1024L * 1024L);
 
         return String.format(
-                "VOID FPS | %s | %d FPS | %.1f ms avg / %.1f ms p99 | heap %d MB | RD %d / SD %d",
-                PROFILES.currentProfile().displayName(),
+                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | heap %d MB | RD %d / SD %d",
                 client.getFps(),
                 MONITOR.averageFrameTimeMs(),
                 MONITOR.percentileFrameTimeMs(0.99),
