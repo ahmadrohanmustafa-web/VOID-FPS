@@ -29,20 +29,25 @@ public final class ClientTickMonitor {
     }
 
     public Stats stats() {
-        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0);
+        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0, 0L, 0L);
         long total = 0L;
         long maximum = 0L;
+        long ticksOver50Ms = 0L;
+        long ticksOver100Ms = 0L;
         
         for (int i = 0; i < count; i++) {
             long value = samplesNanos[i];
             total += value;
             maximum = Math.max(maximum, value);
+            if (value > 50000000L) ticksOver50Ms++;
+            if (value > 100000000L) ticksOver100Ms++;
             sortedScratch[i] = value;
         }
         Arrays.sort(sortedScratch, 0, count);
         int p95Index = Math.max(0, Math.min(count - 1, (int) Math.ceil(count * 0.95) - 1));
         return new Stats(count, total / (double) count / 1_000_000.0,
-                sortedScratch[p95Index] / 1_000_000.0, maximum / 1_000_000.0);
+                sortedScratch[p95Index] / 1_000_000.0, maximum / 1_000_000.0,
+                ticksOver50Ms, ticksOver100Ms);
     }
 
     public long[] snapshotNanos() {
@@ -52,5 +57,6 @@ public final class ClientTickMonitor {
         return copy;
     }
 
-    public record Stats(int sampleCount, double averageMs, double p95Ms, double maximumMs) {}
+    public record Stats(int sampleCount, double averageMs, double p95Ms, double maximumMs,
+                        long ticksOver50Ms, long ticksOver100Ms) {}
 }
