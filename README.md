@@ -9,17 +9,19 @@ VOID FPS Core targets in-world rendering and CPU/GPU workload while leaving the 
 ## Current features
 
 - Configurable subpixel culling for ordinary dropped item entities and experience orbs. Entities remain loaded and simulated; only their render-state extraction is skipped below the configured projected-size threshold.
+- Separate item-entity and experience-orb culling switches, plus a master pickup-culling switch.
 - Custom-named pickups are always preserved.
-- Culling can be disabled and its minimum projected-pixel threshold configured in `config/voidfps.properties`.
-- F9 exports up to 30 seconds of frame-time samples plus average, p99, 1% low, minimum, and maximum metrics to `config/voidfps/`.
+- The projected-pixel threshold is configurable in `config/voidfps.properties`.
+- The HUD reports cumulative skipped pickup render-state extractions.
+- F9 exports up to 30 seconds of frame-time samples, average, p99, 1% low, minimum, maximum, and per-type pickup-culling counters to `config/voidfps/`.
 - F10 toggles the performance monitor.
-- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, render distance, and simulation distance.
+- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, and pickup-culling activity.
 - Summary statistics reuse a fixed scratch buffer, avoiding repeated temporary-array allocation during periodic HUD refreshes.
 - Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate their systems.
 
 ## Important implementation status
 
-The pickup visibility optimization is implemented and build-tested, but its real-world FPS impact has not yet been measured on target hardware. Benchmarking is diagnostic; no FPS multiplier is promised. The previous Vanilla/Gaming/Extreme settings profiles were removed because changing graphics options is not the intended optimization strategy.
+The pickup visibility optimization is implemented and build-tested, but its real-world FPS impact has not yet been measured on target hardware. Culling counters measure skipped render-state extraction, not entities removed from the world. Benchmarking is diagnostic; no FPS multiplier is promised. Graphics settings remain untouched.
 
 Client-only. VOID FPS must not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
 
