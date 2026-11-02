@@ -17,6 +17,7 @@ public final class VoidFpsClient implements ClientModInitializer {
     public static final String MOD_ID = "voidfps";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final FrameTimeMonitor MONITOR = new FrameTimeMonitor();
+    private static final ClientTickMonitor TICK_MONITOR = new ClientTickMonitor();
     private static final VoidFpsConfig CONFIG = new VoidFpsConfig();
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
@@ -34,10 +35,12 @@ public final class VoidFpsClient implements ClientModInitializer {
         resetCountersKey = register("key.voidfps.reset_counters", InputConstants.KEY_F12);
         particleCullingKey = register("key.voidfps.toggle_particle_culling", InputConstants.KEY_F8);
 
+        ClientTickEvents.START_CLIENT_TICK.register(client -> TICK_MONITOR.beginTick(System.nanoTime()));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             cachedScreenHeight = client.getWindow().getHeight();
             while (exportKey.consumeClick()) {
-                BenchmarkExporter.export(MONITOR);
+                BenchmarkExporter.export(MONITOR, TICK_MONITOR);
                 notifyPlayer(client, "VOID FPS: CSV exported to config/voidfps/");
             }
             while (hudKey.consumeClick()) {
@@ -60,6 +63,7 @@ public final class VoidFpsClient implements ClientModInitializer {
                 CONFIG.save();
                 notifyPlayer(client, "VOID FPS tiny-particle culling: " + (CONFIG.tinyParticleCullingEnabled ? "ON" : "OFF"));
             }
+            TICK_MONITOR.endTick(System.nanoTime());
         });
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "performance_monitor"),
@@ -97,8 +101,10 @@ public final class VoidFpsClient implements ClientModInitializer {
     private static String buildHudText(Minecraft client) {
         long ram = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024L * 1024L);
         FrameTimeMonitor.Stats stats = MONITOR.stats();
-        return String.format("VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | pickups %d | particles %d",
-                client.getFps(), stats.averageFrameTimeMs(), stats.p99FrameTimeMs(), stats.onePercentLowFps(),
+        ClientTickMonitor.Stats tickStats = TICK_MONITOR.stats();
+        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | heap %d MB | pickups %d | particles %d",
+                client.getFps(), stats.averageFrameTimeMs(), stats.p99FrameTimeMs(),
+                tickStats.averageMs(), tickStats.p95Ms(), stats.onePercentLowFps(),
                 ram, PickupCullingStats.totalStatesSkipped(), ParticleCullingStats.totalStatesSkipped());
     }
 }
