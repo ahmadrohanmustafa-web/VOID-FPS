@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 public final class VoidFpsConfig {
-    public boolean hudEnabled = true;
+    public boolean hudEnabled = false;
     public boolean tinyPickupCullingEnabled = true;
     public boolean itemEntityCullingEnabled = true;
     public boolean experienceOrbCullingEnabled = true;
@@ -25,7 +25,7 @@ public final class VoidFpsConfig {
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(file)) {
             properties.load(reader);
-            hudEnabled = readBoolean(properties, "hudEnabled", true);
+            hudEnabled = readBoolean(properties, "hudEnabled", false);
             tinyPickupCullingEnabled = readBoolean(properties, "tinyPickupCullingEnabled", true);
             itemEntityCullingEnabled = readBoolean(properties, "itemEntityCullingEnabled", true);
             experienceOrbCullingEnabled = readBoolean(properties, "experienceOrbCullingEnabled", true);
