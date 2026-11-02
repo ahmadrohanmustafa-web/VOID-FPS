@@ -3,7 +3,7 @@ package dev.voidfps.core.mixin;
 import dev.voidfps.core.ParticleCullingStats;
 import dev.voidfps.core.VoidFpsClient;
 import net.minecraft.client.Camera;
-import net.minecraft.client.particle.QuadParticleRenderState;
+import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
 import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.particle.VibrationSignalParticle;
 import net.minecraft.world.phys.Vec3;
