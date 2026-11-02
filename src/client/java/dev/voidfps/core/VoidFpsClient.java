@@ -81,7 +81,6 @@ public final class VoidFpsClient implements ClientModInitializer {
     }
 
     private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
-        // Keep benchmark sampling active even when the optional HUD is hidden.
         MONITOR.recordFrame(System.nanoTime());
 
         if (!CONFIG.hudEnabled || client.level == null || client.player == null) {
@@ -97,12 +96,14 @@ public final class VoidFpsClient implements ClientModInitializer {
     private static String buildHudText(Minecraft client) {
         long ram = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
                 / (1024L * 1024L);
+        FrameTimeMonitor.Stats stats = MONITOR.stats();
 
         return String.format(
-                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | heap %d MB | RD %d / SD %d",
+                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | RD %d / SD %d",
                 client.getFps(),
-                MONITOR.averageFrameTimeMs(),
-                MONITOR.percentileFrameTimeMs(0.99),
+                stats.averageFrameTimeMs(),
+                stats.p99FrameTimeMs(),
+                stats.onePercentLowFps(),
                 ram,
                 client.options.renderDistance().get(),
                 client.options.simulationDistance().get());
