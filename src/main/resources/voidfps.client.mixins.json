@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "dev.voidfps.core.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "LevelExtractorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
