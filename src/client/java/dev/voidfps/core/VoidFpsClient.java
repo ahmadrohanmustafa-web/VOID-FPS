@@ -68,8 +68,12 @@ public final class VoidFpsClient implements ClientModInitializer {
         LOGGER.info("VOID FPS Core initialized. Graphics settings are left unchanged. F9 exports frame-time data; F10 toggles the monitor.");
     }
 
-    public static boolean shouldCullTinyPickups() {
-        return CONFIG.tinyPickupCullingEnabled;
+    public static boolean shouldCullItemEntities() {
+        return CONFIG.tinyPickupCullingEnabled && CONFIG.itemEntityCullingEnabled;
+    }
+
+    public static boolean shouldCullExperienceOrbs() {
+        return CONFIG.tinyPickupCullingEnabled && CONFIG.experienceOrbCullingEnabled;
     }
 
     public static int cachedScreenHeight() {
@@ -99,13 +103,12 @@ public final class VoidFpsClient implements ClientModInitializer {
         FrameTimeMonitor.Stats stats = MONITOR.stats();
 
         return String.format(
-                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | RD %d / SD %d",
+                "VOID FPS | %d FPS | %.1f ms avg / %.1f ms p99 | 1%% low %.0f | heap %d MB | pickups skipped %d",
                 client.getFps(),
                 stats.averageFrameTimeMs(),
                 stats.p99FrameTimeMs(),
                 stats.onePercentLowFps(),
                 ram,
-                client.options.renderDistance().get(),
-                client.options.simulationDistance().get());
+                PickupCullingStats.totalStatesSkipped());
     }
 }
