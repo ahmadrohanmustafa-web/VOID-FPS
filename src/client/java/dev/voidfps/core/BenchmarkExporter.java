@@ -31,6 +31,10 @@ public final class BenchmarkExporter {
             csv.append("minimum_frame_time_ms,").append(format(frameStats.minimumFrameTimeMs())).append('\n');
             csv.append("maximum_frame_time_ms,").append(format(frameStats.maximumFrameTimeMs())).append('\n');
             csv.append("client_tick_sample_count,").append(tickStats.sampleCount()).append('\n');
+            GarbageCollectionMonitor.Stats gcStats = VoidFpsClient.garbageCollectionStats();
+            csv.append("gc_collections_since_start,").append(gcStats.collectionsSinceStart()).append('\n');
+            csv.append("gc_collection_time_ms,").append(gcStats.collectionTimeMs()).append('\n');
+            csv.append("gc_last_sample_pause_ms,").append(gcStats.lastSamplePauseMs()).append('\n');
             csv.append("average_client_tick_ms,").append(format(tickStats.averageMs())).append('\n');
             csv.append("p95_client_tick_ms,").append(format(tickStats.p95Ms())).append('\n');
             csv.append("maximum_client_tick_ms,").append(format(tickStats.maximumMs())).append('\n');
