@@ -12,12 +12,24 @@ VOID FPS Core targets in-world rendering and CPU/GPU workload while leaving the 
 - Separate item-entity and experience-orb culling switches, plus a master pickup-culling switch.
 - Custom-named pickups are always preserved.
 - The projected-pixel threshold is configurable in `config/voidfps.properties`.
-- The HUD reports cumulative skipped pickup render-state extractions.
 - F9 exports up to 30 seconds of frame-time samples, average, p99, 1% low, minimum, maximum, and per-type pickup-culling counters to `config/voidfps/`.
 - F10 toggles the performance monitor.
-- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, and pickup-culling activity.
+- F11 toggles the master pickup-culling feature without changing graphics settings.
+- F12 resets the pickup-culling counters.
+- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, and per-type pickup-culling activity.
 - Summary statistics reuse a fixed scratch buffer, avoiding repeated temporary-array allocation during periodic HUD refreshes.
 - Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate their systems.
+
+## Controls
+
+| Key | Action |
+|---|---|
+| F9 | Export benchmark CSV |
+| F10 | Toggle performance monitor |
+| F11 | Toggle pickup culling |
+| F12 | Reset pickup counters |
+
+All controls can be rebound in Minecraft's Controls menu.
 
 ## Important implementation status
 
