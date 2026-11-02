@@ -31,16 +31,20 @@ public final class FrameTimeMonitor {
 
     /** Calculates all commonly displayed statistics in one pass and one sort. */
     public synchronized Stats stats() {
-        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        if (count == 0) return new Stats(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0L)
 
         double sum = 0.0;
         double minimum = Double.MAX_VALUE;
         double maximum = 0.0;
+        long framesOver50Ms = 0L;
+        long framesOver100Ms = 0L;
         for (int i = 0; i < count; i++) {
             double value = values[i];
             sum += value;
             minimum = Math.min(minimum, value);
             maximum = Math.max(maximum, value);
+            if (value > 50.0) framesOver50Ms++;
+            if (value > 100.0) framesOver100Ms++;
             percentileScratch[i] = value;
         }
 
@@ -48,7 +52,8 @@ public final class FrameTimeMonitor {
         int p99Index = Math.max(0, Math.min(count - 1, (int) Math.ceil(count * 0.99) - 1));
         double p99 = percentileScratch[p99Index];
         return new Stats(count, sum / count, p99,
-                p99 <= 0.0 ? 0.0 : 1000.0 / p99, minimum, maximum);
+                p99 <= 0.0 ? 0.0 : 1000.0 / p99, minimum, maximum,
+                framesOver50Ms, framesOver100Ms);
     }
 
     public synchronized double averageFrameTimeMs() {
@@ -92,6 +97,8 @@ public final class FrameTimeMonitor {
             double p99FrameTimeMs,
             double onePercentLowFps,
             double minimumFrameTimeMs,
-            double maximumFrameTimeMs
+            double maximumFrameTimeMs,
+            long framesOver50Ms,
+            long framesOver100Ms
     ) {}
 }
