@@ -52,8 +52,7 @@ public abstract class SingleQuadParticleMixin {
             return;
         }
 
-        double maximumVisibleDistance = particleSize
-                * screenHeight * VoidFpsClient.particleProjectionScale();
+        double maximumVisibleDistance = particleSize * VoidFpsClient.particleScreenScale();
         if (distanceSquared > maximumVisibleDistance * maximumVisibleDistance) {
             ParticleCullingStats.recordSkipped();
             ci.cancel();
