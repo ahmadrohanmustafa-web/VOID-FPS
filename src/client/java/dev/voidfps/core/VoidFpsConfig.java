@@ -1,7 +1,6 @@
 package dev.voidfps.core;
 
 import net.fabricmc.loader.api.FabricLoader;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -14,35 +13,25 @@ public final class VoidFpsConfig {
     public boolean tinyPickupCullingEnabled = true;
     public boolean itemEntityCullingEnabled = true;
     public boolean experienceOrbCullingEnabled = true;
+    public boolean tinyParticleCullingEnabled = true;
     public double minimumPickupPixels = 0.75;
-
+    public double minimumParticlePixels = 0.35;
     private double pickupProjectionScale = calculateProjectionScale(minimumPickupPixels);
+    private double particleProjectionScale = calculateProjectionScale(minimumParticlePixels);
     private final Path file = FabricLoader.getInstance().getConfigDir().resolve("voidfps.properties");
 
     public void load() {
-        if (!Files.exists(file)) {
-            refreshDerivedValues();
-            save();
-            return;
-        }
-
+        if (!Files.exists(file)) { refreshDerivedValues(); save(); return; }
         Properties properties = new Properties();
         try (Reader reader = Files.newBufferedReader(file)) {
             properties.load(reader);
-            hudEnabled = Boolean.parseBoolean(properties.getProperty("hudEnabled", "true"));
-            tinyPickupCullingEnabled = Boolean.parseBoolean(
-                    properties.getProperty("tinyPickupCullingEnabled", "true"));
-            itemEntityCullingEnabled = Boolean.parseBoolean(
-                    properties.getProperty("itemEntityCullingEnabled", "true"));
-            experienceOrbCullingEnabled = Boolean.parseBoolean(
-                    properties.getProperty("experienceOrbCullingEnabled", "true"));
-            try {
-                minimumPickupPixels = Double.parseDouble(
-                        properties.getProperty("minimumPickupPixels", "0.75"));
-            } catch (NumberFormatException ignored) {
-                minimumPickupPixels = 0.75;
-            }
-            minimumPickupPixels = Math.max(0.25, Math.min(2.0, minimumPickupPixels));
+            hudEnabled = readBoolean(properties, "hudEnabled", true);
+            tinyPickupCullingEnabled = readBoolean(properties, "tinyPickupCullingEnabled", true);
+            itemEntityCullingEnabled = readBoolean(properties, "itemEntityCullingEnabled", true);
+            experienceOrbCullingEnabled = readBoolean(properties, "experienceOrbCullingEnabled", true);
+            tinyParticleCullingEnabled = readBoolean(properties, "tinyParticleCullingEnabled", true);
+            minimumPickupPixels = readDouble(properties, "minimumPickupPixels", 0.75, 0.25, 2.0);
+            minimumParticlePixels = readDouble(properties, "minimumParticlePixels", 0.35, 0.1, 1.0);
             refreshDerivedValues();
         } catch (IOException e) {
             refreshDerivedValues();
@@ -50,33 +39,40 @@ public final class VoidFpsConfig {
         }
     }
 
-    public double pickupProjectionScale() {
-        return pickupProjectionScale;
+    private static boolean readBoolean(Properties p, String key, boolean fallback) {
+        String value = p.getProperty(key);
+        return value == null ? fallback : Boolean.parseBoolean(value);
     }
+
+    private static double readDouble(Properties p, String key, double fallback, double min, double max) {
+        try { return Math.max(min, Math.min(max, Double.parseDouble(p.getProperty(key, Double.toString(fallback))))); }
+        catch (NumberFormatException ignored) { return fallback; }
+    }
+
+    public double pickupProjectionScale() { return pickupProjectionScale; }
+    public double particleProjectionScale() { return particleProjectionScale; }
 
     private void refreshDerivedValues() {
         pickupProjectionScale = calculateProjectionScale(minimumPickupPixels);
+        particleProjectionScale = calculateProjectionScale(minimumParticlePixels);
     }
 
-    private static double calculateProjectionScale(double minimumPixels) {
-        return 1.0 / (2.0 * minimumPixels * Math.tan(Math.toRadians(35.0)));
+    private static double calculateProjectionScale(double pixels) {
+        return 1.0 / (2.0 * pixels * Math.tan(Math.toRadians(35.0)));
     }
 
     public void save() {
-        Properties properties = new Properties();
-        properties.setProperty("hudEnabled", Boolean.toString(hudEnabled));
-        properties.setProperty("tinyPickupCullingEnabled", Boolean.toString(tinyPickupCullingEnabled));
-        properties.setProperty("itemEntityCullingEnabled", Boolean.toString(itemEntityCullingEnabled));
-        properties.setProperty("experienceOrbCullingEnabled", Boolean.toString(experienceOrbCullingEnabled));
-        properties.setProperty("minimumPickupPixels", Double.toString(minimumPickupPixels));
-
+        Properties p = new Properties();
+        p.setProperty("hudEnabled", Boolean.toString(hudEnabled));
+        p.setProperty("tinyPickupCullingEnabled", Boolean.toString(tinyPickupCullingEnabled));
+        p.setProperty("itemEntityCullingEnabled", Boolean.toString(itemEntityCullingEnabled));
+        p.setProperty("experienceOrbCullingEnabled", Boolean.toString(experienceOrbCullingEnabled));
+        p.setProperty("tinyParticleCullingEnabled", Boolean.toString(tinyParticleCullingEnabled));
+        p.setProperty("minimumPickupPixels", Double.toString(minimumPickupPixels));
+        p.setProperty("minimumParticlePixels", Double.toString(minimumParticlePixels));
         try {
             Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                properties.store(writer, "VOID FPS Core settings");
-            }
-        } catch (IOException e) {
-            VoidFpsClient.LOGGER.warn("Could not save VOID FPS config.", e);
-        }
+            try (Writer writer = Files.newBufferedWriter(file)) { p.store(writer, "VOID FPS Core settings"); }
+        } catch (IOException e) { VoidFpsClient.LOGGER.warn("Could not save VOID FPS config.", e); }
     }
 }
