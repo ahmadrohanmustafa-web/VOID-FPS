@@ -1,8 +1,14 @@
 {
- "schemaVersion":1,"id":"voidfps","version":"${version}","name":"VOID FPS Core",
- "description":"Client-side performance profiles and frame-time monitoring for Minecraft 26.3.",
- "authors":["VOID FPS Project"],"contact":{"sources":"https://github.com/ahmadrohanmustafa-web/VOID-FPS"},
- "license":"MIT","environment":"client",
+ "schemaVersion":1,
+ "id":"voidfps",
+ "version":"${version}",
+ "name":"VOID FPS Core",
+ "description":"Client-side rendering workload optimizations that preserve the player's graphics settings.",
+ "authors":["VOID FPS Project"],
+ "contact":{"sources":"https://github.com/ahmadrohanmustafa-web/VOID-FPS"},
+ "license":"MIT",
+ "environment":"client",
  "entrypoints":{"client":["dev.voidfps.core.VoidFpsClient"]},
+ "mixins":[{"config":"voidfps.client.mixins.json","environment":"client"}],
  "depends":{"fabricloader":">=0.19.5","minecraft":"~26.3","java":">=25","fabric-api":">=0.164.0+26.3"}
 }
