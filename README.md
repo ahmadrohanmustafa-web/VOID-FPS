@@ -26,7 +26,10 @@ Optimize in-world rendering and CPU/GPU workload while leaving every player grap
 - The CSV includes frame average/p99/1% low/min/max and client tick average/p95/maximum, plus per-category culling counters.
 - Client tick timing is measured separately from frame timing, helping distinguish CPU-side tick workload from rendering/frame pacing. It measures the client tick callback window, not integrated-server or remote-server tick time.
 - F10 toggles the monitor; F11 toggles pickup culling; F12 resets render counters.
-- Monitor reports FPS, average and p99 frame time, average and p95 client tick time, 1% low, approximate Java heap occupancy, and skipped render-state counters.
+- Monitor reports FPS, average and p99 frame time, average and p95 client tick time, 1% low, JVM GC collection count/time, approximate Java heap occupancy, and skipped render-state counters.
+- JVM GC counters are sampled once per second; VOID FPS never triggers garbage collection.
+- Projected-size factors are precomputed once per client tick instead of multiplying screen height and projection scale for every candidate entity/particle.
+- Client-tick percentile calculation reuses a fixed scratch array to avoid temporary array allocation on each HUD statistics refresh.
 - Summary statistics reuse a fixed scratch buffer to reduce temporary allocations during periodic HUD refreshes.
 
 ## Configuration
