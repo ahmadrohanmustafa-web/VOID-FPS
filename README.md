@@ -4,21 +4,22 @@ Minecraft Java 26.3 · Fabric · Java 25+
 
 ## Project goal
 
-VOID FPS Core is intended to improve in-game performance while leaving the player's graphics settings unchanged, including maximum-quality settings. It must not lower render distance, simulation distance, particles, clouds, shadows, ambient occlusion, or other visual options automatically.
+VOID FPS Core targets in-world rendering and CPU/GPU workload while leaving the player's graphics settings unchanged, including maximum-quality settings. It does not lower render distance, simulation distance, particles, clouds, shadows, ambient occlusion, or other visual options.
 
 ## Current features
 
-- F9 exports the latest 240 frame intervals to `config/voidfps/`.
+- Configurable subpixel culling for ordinary dropped item entities and experience orbs. Entities remain loaded and simulated; only their render-state extraction is skipped below the configured projected-size threshold.
+- Custom-named pickups are always preserved.
+- Culling can be disabled and its minimum projected-pixel threshold configured in `config/voidfps.properties`.
+- F9 exports up to 30 seconds of frame-time samples plus average, p99, 1% low, minimum, and maximum metrics to `config/voidfps/`.
 - F10 toggles the performance monitor.
-- Monitor reports FPS, average frame time, 99th-percentile frame time, approximate Java heap occupancy, render distance, and simulation distance.
-- Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate them.
-- Does not change Minecraft video settings.
+- The monitor reports FPS, average frame time, p99 frame time, 1% low, approximate Java heap occupancy, render distance, and simulation distance.
+- Summary statistics reuse a fixed scratch buffer, avoiding repeated temporary-array allocation during periodic HUD refreshes.
+- Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling; it does not bundle or duplicate their systems.
 
 ## Important implementation status
 
-The current monitor and benchmark exporter are diagnostic tools; they do not themselves increase FPS. The previous Vanilla/Gaming/Extreme settings profiles have been removed because changing graphics options is not the intended optimization strategy.
-
-The next optimization work must target actual rendering or CPU/GPU workload while preserving the same visible result and all player settings. Any optimization must be implemented and build-tested before it is described as a feature. Performance gains must be measured on real hardware; no FPS multiplier is promised.
+The pickup visibility optimization is implemented and build-tested, but its real-world FPS impact has not yet been measured on target hardware. Benchmarking is diagnostic; no FPS multiplier is promised. The previous Vanilla/Gaming/Extreme settings profiles were removed because changing graphics options is not the intended optimization strategy.
 
 Client-only. VOID FPS must not delete blocks, alter collision or interaction, disable world simulation, or interfere with networking, lighting updates, or mob AI.
 
