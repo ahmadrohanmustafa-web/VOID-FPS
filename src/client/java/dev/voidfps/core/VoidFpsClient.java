@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -58,14 +58,14 @@ public final class VoidFpsClient implements ClientModInitializer {
         LOGGER.info("VOID FPS Core initialized. F8 profiles, F9 CSV export, F10 monitor.");
     }
 
-    private static void renderHud(Minecraft client, GuiGraphics graphics) {
+    private static void renderHud(Minecraft client, GuiGraphicsExtractor graphics) {
         if (!CONFIG.hudEnabled || client.level == null || client.player == null) return;
         FRAME_MONITOR.recordFrame(System.nanoTime());
         if (++hudRefreshCounter >= 8) {
             hudRefreshCounter = 0;
             cachedHudText = buildHudText(client);
         }
-        graphics.drawString(client.font, cachedHudText, 8, 8, 0xFFE8F2FF, true);
+        graphics.text(client.font, cachedHudText, 8, 8, 0xFFE8F2FF);
     }
 
     private static String buildHudText(Minecraft client) {
