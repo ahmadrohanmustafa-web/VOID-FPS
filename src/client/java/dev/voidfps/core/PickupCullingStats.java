@@ -29,4 +29,9 @@ public final class PickupCullingStats {
     public static long totalStatesSkipped() {
         return itemEntityStatesSkipped + experienceOrbStatesSkipped;
     }
+
+    public static void reset() {
+        itemEntityStatesSkipped = 0L;
+        experienceOrbStatesSkipped = 0L;
+    }
 }
