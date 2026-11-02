@@ -9,6 +9,7 @@ import java.util.Arrays;
 public final class ClientTickMonitor {
     private static final int CAPACITY = 1200;
     private final long[] samplesNanos = new long[CAPACITY];
+    private final long[] sortedScratch = new long[CAPACITY];
     private int next;
     private int count;
     private long tickStartedAt;
@@ -31,17 +32,17 @@ public final class ClientTickMonitor {
         if (count == 0) return new Stats(0, 0.0, 0.0, 0.0);
         long total = 0L;
         long maximum = 0L;
-        long[] sorted = new long[count];
+        
         for (int i = 0; i < count; i++) {
             long value = samplesNanos[i];
             total += value;
             maximum = Math.max(maximum, value);
-            sorted[i] = value;
+            sortedScratch[i] = value;
         }
-        Arrays.sort(sorted);
+        Arrays.sort(sortedScratch, 0, count);
         int p95Index = Math.max(0, Math.min(count - 1, (int) Math.ceil(count * 0.95) - 1));
         return new Stats(count, total / (double) count / 1_000_000.0,
-                sorted[p95Index] / 1_000_000.0, maximum / 1_000_000.0);
+                sortedScratch[p95Index] / 1_000_000.0, maximum / 1_000_000.0);
     }
 
     public long[] snapshotNanos() {
