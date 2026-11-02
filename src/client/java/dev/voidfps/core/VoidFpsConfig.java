@@ -12,6 +12,8 @@ import java.util.Properties;
 public final class VoidFpsConfig {
     public boolean hudEnabled = true;
     public boolean tinyPickupCullingEnabled = true;
+    public boolean itemEntityCullingEnabled = true;
+    public boolean experienceOrbCullingEnabled = true;
     public double minimumPickupPixels = 0.75;
 
     private double pickupProjectionScale = calculateProjectionScale(minimumPickupPixels);
@@ -30,6 +32,10 @@ public final class VoidFpsConfig {
             hudEnabled = Boolean.parseBoolean(properties.getProperty("hudEnabled", "true"));
             tinyPickupCullingEnabled = Boolean.parseBoolean(
                     properties.getProperty("tinyPickupCullingEnabled", "true"));
+            itemEntityCullingEnabled = Boolean.parseBoolean(
+                    properties.getProperty("itemEntityCullingEnabled", "true"));
+            experienceOrbCullingEnabled = Boolean.parseBoolean(
+                    properties.getProperty("experienceOrbCullingEnabled", "true"));
             try {
                 minimumPickupPixels = Double.parseDouble(
                         properties.getProperty("minimumPickupPixels", "0.75"));
@@ -60,6 +66,8 @@ public final class VoidFpsConfig {
         Properties properties = new Properties();
         properties.setProperty("hudEnabled", Boolean.toString(hudEnabled));
         properties.setProperty("tinyPickupCullingEnabled", Boolean.toString(tinyPickupCullingEnabled));
+        properties.setProperty("itemEntityCullingEnabled", Boolean.toString(itemEntityCullingEnabled));
+        properties.setProperty("experienceOrbCullingEnabled", Boolean.toString(experienceOrbCullingEnabled));
         properties.setProperty("minimumPickupPixels", Double.toString(minimumPickupPixels));
 
         try {
