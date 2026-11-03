@@ -1,7 +1,7 @@
 package dev.voidfps.core.mixin;
 
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
-import net.minecraft.client.renderer.block.BlockModelRenderer;
+import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.block.BlockQuadOutput;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.core.BlockPos;
