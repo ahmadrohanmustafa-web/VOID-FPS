@@ -16,6 +16,7 @@ public final class FrameTimeMonitor {
     private int next;
     private int count;
     private long previous;
+    private volatile double lastFrameTimeMs;
 
     public synchronized void recordFrame(long now) {
         if (previous != 0L) {
@@ -24,9 +25,14 @@ public final class FrameTimeMonitor {
                 values[next] = ms;
                 next = (next + 1) % CAPACITY;
                 count = Math.min(count + 1, CAPACITY);
+                lastFrameTimeMs = ms;
             }
         }
         previous = now;
+    }
+
+    public double lastFrameTimeMs() {
+        return lastFrameTimeMs;
     }
 
     /** Calculates all commonly displayed statistics in one pass and one sort. */
