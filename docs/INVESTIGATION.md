@@ -1,69 +1,42 @@
-# Rendering investigation (Minecraft 26.3)
+# Minecraft 26.3 rendering investigation
 
-Research date: 2026-11-03. Method: web research only. **No Minecraft jar was inspected**, because the
-environment that produced this project had no network access for Gradle/Loom, no JDK 25 and no `javap`.
-Everything below is therefore split by how well it is supported.
+Research date: 2026-11-03. This document records the actual Minecraft 26.3 bytecode inspected by the GitHub Actions workflow, rather than assumptions based only on third-party primers.
 
-## A. Toolchain facts (from sources)
+## Verified face-occlusion path
 
-| Item | Value | Source |
-|---|---|---|
-| Minecraft | 26.3 ("Wilderness Bound", released 2026-09-15) | https://fabricmc.net/2026/09/15/263.html |
-| Fabric Loader | 0.19.5 | same |
-| Loom | 1.17 (exact artifact string unverified: `1.17-SNAPSHOT` assumed) | same |
-| Gradle | 9.6.0 "at the time of writing" (9.7.1 is used by at least one 26.3 mod) | same; https://github.com/imCinq/water-optimisation/releases/tag/v0.0.10 |
-| Java | 25 | 26.3 mod release notes, e.g. https://www.curseforge.com/minecraft/mc-mods/keenlib |
-| Loom plugin id | `net.fabricmc.fabric-loom` (non-obfuscated, 26.1+) | https://docs.fabricmc.net/develop/loom/ |
-| Mappings | Mojang official names, unobfuscated, no remap | https://docs.fabricmc.net/26.1.2/develop/porting/ |
-| Fabric API (not used) | 0.160.5+26.3 to 0.161.0+26.3 seen in the wild | 26.3 mod release notes |
+The inspection artifact contains `Block.bytecode.txt`, `ModelBlockRenderer.bytecode.txt`, `SectionCompiler.bytecode.txt`, and `signatures.txt`.
 
-## B. Rendering classes whose *existence* is reported by third-party primers
+Observed in Minecraft 26.3:
 
-Names only. Parameter lists for 26.3 are **not verified**.
+- `net.minecraft.world.level.block.Block` declares a thread-local `Object2ByteLinkedOpenHashMap<Block.ShapePairKey>` named `OCCLUSION_CACHE`.
+- `Block.shouldRenderFace(BlockState, BlockState, Direction)` obtains the two face-occlusion shapes, checks the thread-local cache, and computes the shape join only on a cache miss.
+- The cache removes the least-recently-used entry when its size reaches 256, then inserts the result.
+- `net.minecraft.client.renderer.block.ModelBlockRenderer.shouldRenderFace(...)` obtains the neighboring block state and delegates to `Block.shouldRenderFace(...)`.
 
-- `net.minecraft.client.renderer.block.ModelBlockRenderer#tesselateBlock` — `BlockRenderDispatcher` was
-  removed in 26.1 and callers now invoke this directly; `ModelBlockRenderer` takes booleans for ambient
-  occlusion and culling. (NeoForge 26.1 primer: https://docs.neoforged.net/primer/docs/26.1/)
-- `ModelBlockRenderer$Cache` with `getLightCoords` (renamed from `getLightColor` in 26.1). Vanilla therefore
-  already caches per-position light data used by smooth lighting / AO.
-- `net.minecraft.client.renderer.chunk.SectionCompiler#compile` — compiles a region into section meshes;
-  in 26.2 it stopped taking a `BlockEntityRenderDispatcher`. (NeoForge 26.2 primer)
-- `net.minecraft.client.renderer.chunk.RenderSectionRegion`, `SectionCopy` — made public in 26.2.
-- 26.3 terrain changes: indirect multi-draw (`Minecraft#multiDrawIndirect`, `SOLID_TERRAIN_MULTIDRAW`
-  etc.), improved transparency (OIT) and a sections fade duration. These are draw-submission / GPU-side
-  changes and are outside what this mod may touch. (NeoForge 26.3 primer: https://docs.neoforged.net/primer/docs/26.3/)
-- Fluid tessellation lives in a `FluidRenderer` class (`FluidRenderer#tesselate`, `addFace`) per the 26.1
-  primer and a 26.3 mod's architecture notes. Fluids are out of scope for a *first* pass; see below.
+**Conclusion:** a second VOID FPS cache for block-face visibility would duplicate vanilla's existing cache. It is not implemented.
 
-## C. Work vanilla is already reported to do (do not re-implement and advertise)
+## Existing renderer behavior observed
 
-- Same-fluid face culling happens before geometry is emitted (water-optimisation ARCHITECTURE.md:
-  https://github.com/imCinq/water-optimisation/blob/main/docs/ARCHITECTURE.md).
-- Per-position light/AO inputs are cached in `ModelBlockRenderer$Cache` (primer above).
-- Face culling is a constructor flag of `ModelBlockRenderer` (primer above), meaning culling is core vanilla
-  behavior, not something to bolt on.
-- Whether vanilla also caches neighbor-face occlusion results (older versions did inside `Block`) in 26.3
-  is **unknown** and decides whether the "cache face visibility" idea has any value at all.
+- `ModelBlockRenderer` exposes `tesselateBlock`, flat/AO tessellation helpers, a face-culling flag, and tint-cache fields/methods.
+- Its face-visibility method delegates to the vanilla `Block.shouldRenderFace` cache described above.
+- `SectionCompiler` is the section mesh compilation path and is present in the inspection output.
 
-## D. Candidate optimizations and their honest status
+These observations alone do not prove a safe alternative optimization. No change to tessellation, model part iteration, tinting, lighting, AO, or section compilation has been justified by the current evidence.
 
-| # | Candidate | Needs | Status |
-|---|---|---|---|
-| 1 | Cache repeated face-visibility checks | Whether vanilla already caches; the exact method and its callers | **Not implementable yet.** May turn out to be redundant. |
-| 2 | Avoid per-block allocations in `tesselateBlock` | Decompiled body of `tesselateBlock` and helpers | **Not implementable yet.** |
-| 3 | Reuse work across multipart/weighted model parts | Shape of `BlockStateModel`/`BlockModelPart` in 26.3 | **Not implementable yet.** Correctness risk is high (random seeds, rotations). |
-| 4 | Fluid hidden-face skipping | Already done by third-party mods; out of scope | **Excluded**: not block/terrain model work and already covered elsewhere. |
+## Decision
 
-No candidate has been rejected on evidence, and none has been accepted. That is the real state of the project.
+No rendering mixins or patches are enabled. The safe decision is to keep this build behavior-neutral rather than add an unproven optimization that could duplicate work, alter visible geometry, or crash Minecraft.
 
-## E. Acceptance criteria for any future optimization
+## Acceptance criteria for future work
 
-1. The target method and descriptor appear in `signatures.txt` produced by `tools/inspect_targets.py`.
-2. The decompiled body shows redundant work that vanilla does not already avoid.
-3. Cache keys contain no world/chunk/level references, or are scoped to a single section compile.
-4. Compile threads are respected (section compilation is multi-threaded in vanilla): no shared mutable state
-   without synchronization, or use thread-confined state.
-5. An A/B toggle (JVM property) exists for benchmarking, and output geometry is compared between vanilla
-   and VOID FPS for a fixed set of blocks (full cubes, glass, leaves, stairs, slabs, fences, walls, plants,
-   multipart, tinted) before the optimization is kept.
-6. A measurable CPU-side improvement (section compile time) exists on real hardware; otherwise remove it.
+A future optimization must:
+1. Be based on the exact Minecraft 26.3 bytecode/source and method descriptor.
+2. Avoid duplicating vanilla caches or existing culling.
+3. Preserve all visible faces, model variants, textures, tint, lighting, and ambient occlusion.
+4. Be thread-safe under parallel section compilation.
+5. Pass an A/B geometry-equivalence test across full cubes, glass, leaves, slabs, stairs, fences, walls, plants, and multipart models.
+6. Show a repeatable CPU-side gain on real hardware. Otherwise it must be removed.
+
+## Remaining validation
+
+The JAR has compiled in CI, but the game has not been launched with it. Runtime compatibility, visual equivalence, and FPS impact remain unverified.
