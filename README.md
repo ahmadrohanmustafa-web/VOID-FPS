@@ -6,7 +6,7 @@ Minecraft Java 26.3 · Fabric · Java 25+
 
 VOID FPS is a specialized block and terrain rendering optimization mod. It is not intended to replace Sodium or duplicate general-purpose optimization features.
 
-Its central goal is to reduce unnecessary block-face and terrain-mesh work while preserving the exact visible world.
+Its objective is to reduce repeated block-face visibility work while preserving Minecraft's own block models and the exact vanilla visibility decision.
 
 ## Strict visual requirements
 
@@ -17,23 +17,35 @@ Its central goal is to reduce unnecessary block-face and terrain-mesh work while
 - Preserve chunk-boundary visibility and correct updates after blocks change.
 - Do not add optimization keybinds, toggles, or a performance HUD.
 
+## What the current implementation does
+
+### Repeated face-decision cache
+
+`BlockModelRendererMixin` memoizes a face-visibility result during the tessellation of one block model.
+
+- The first query for a direction always calls Minecraft's original `shouldRenderFace` implementation.
+- A repeated query is reused only when the level, block state, block position, direction, and neighbor position match.
+- The cache is thread-local, so worker-thread chunk compilation does not share mutable cache state.
+- The cache is reset for every block-model tessellation.
+- It does not invent new occlusion rules or remove any additional geometry.
+
+This is a narrow CPU-side optimization for models that ask the same directional visibility question multiple times. Ordinary cube models may not repeat those queries, so this change is not expected to produce a large universal FPS increase.
+
+### Chunk compilation scheduling
+
+The existing chunk compilation hook keeps synchronous section compilation on the dispatcher's asynchronous path. It changes scheduling, not the generated block geometry or graphics settings.
+
 ## Important rendering fact
 
-Minecraft already omits many faces covered by neighboring opaque blocks during its normal chunk-meshing process. A second face-culling check that simply repeats vanilla's decision would not create a real optimization.
-
-The meaningful target is the actual 26.3 chunk-mesh construction path: reduce the CPU and memory cost of deciding which model faces contribute, building the visible mesh, and preparing it for rendering without changing the resulting image.
-
-A block's texture is carried by rendered geometry. The goal is to omit hidden geometry while keeping all visible textured faces, not to remove visible blocks.
+Minecraft 26.3 already removes many hidden opaque block faces during its own model tessellation. A second independent face-culling rule would usually duplicate vanilla work and could break special models. The safe first optimization is therefore to reuse identical vanilla face decisions rather than changing the visibility result.
 
 ## Current implementation status
 
-This branch is a cleanup and foundation step, not a completed custom block renderer.
+The repository cleanup and the face-decision cache compile successfully in GitHub Actions.
 
-- Removed unrelated entity/particle culling, monitoring, adaptive controls, benchmark HUD, and their keybinds.
-- Kept the existing chunk compilation scheduling mixin as the only current terrain-related hook.
-- A specialized block-face / chunk-mesh optimization has **not yet been implemented or verified**.
+This is **not yet a complete replacement terrain renderer**, and no measurable in-game FPS improvement has been established. Runtime mixin application, visual parity, and before/after performance still require testing in Minecraft 26.3.
 
-Do not describe this branch as delivering the final rendering optimization until that implementation exists and has been tested in-game.
+Do not describe the mod as finished or performance-verified until those tests pass.
 
 ## Build
 
@@ -52,4 +64,4 @@ The JAR is generated in `build/libs/`.
 
 ## Compatibility
 
-The custom block-rendering work must use verified Minecraft 26.3 APIs. If the custom path fails to initialize, vanilla terrain rendering must remain available. A successful compile alone does not prove correct rendering.
+The face-decision cache delegates the first query to Minecraft's own renderer and only reuses an identical result within the same block tessellation. If the mixin cannot apply, the mod must fail safely and leave vanilla rendering available.
