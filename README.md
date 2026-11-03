@@ -49,13 +49,22 @@ A naive camera-facing-only face filter is not correct for a 3D world: a face fac
 - Separate enable switch and configurable threshold. F8 toggles this feature at runtime.
 - Does not change Minecraft's particle quality setting or particle spawn limit.
 
-### 4. Monitoring and benchmarking
+### 4. Adaptive render culling
+
+- F7 toggles adaptive culling.
+- Monitors the most recent frame time with a low-cost sample; it does not sort the benchmark history every tick.
+- When frames remain slow, it gradually increases the distance threshold for tiny pickup and single-quad particle render-state culling, up to 2.5x.
+- When frame times recover, it gradually returns to the normal threshold.
+- Does not alter entity simulation, particle simulation, block rendering, render distance, or world data.
+- Disable with F7 or `adaptiveCullingEnabled=false` if you prefer fixed culling.
+
+### 5. Monitoring and benchmarking
 
 - F9 exports up to 30 seconds of frame-time samples and up to 60 seconds of client-tick samples to `config/voidfps/`.
 - CSV includes frame average/p99/1% low/min/max, client tick average/p95/maximum, counts of frame/tick spikes above 50 ms and 100 ms, plus per-category culling counters.
 - Client tick timing is measured separately from frame timing. It measures the client tick callback window, not integrated-server or remote-server tick time.
 - The diagnostic overlay is OFF by default. F10 toggles it; F11 toggles pickup culling; F12 resets render counters.
-- Overlay reports FPS, average and p99 frame time, average and p95 client tick time, 1% low, frame/tick spike counts, JVM GC collection count/time, approximate Java heap occupancy, and skipped render-state counters.
+- Overlay reports FPS, average and p99 frame time, average and p95 client tick time, 1% low, frame/tick spike counts, JVM GC collection count/time, approximate Java heap occupancy, skipped render-state counters, and the adaptive culling multiplier.
 - JVM GC counters are sampled once per second. VOID FPS never triggers garbage collection.
 - Rolling monitor buffers and scratch arrays are reused to limit diagnostic allocations.
 
@@ -63,6 +72,7 @@ A naive camera-facing-only face filter is not correct for a 3D world: a face fac
 
 All controls can be rebound in Minecraft's Controls menu:
 
+- F7 — toggle adaptive culling
 - F8 — toggle tiny-particle culling
 - F9 — export benchmark CSV
 - F10 — toggle performance monitor
@@ -73,6 +83,7 @@ All controls can be rebound in Minecraft's Controls menu:
 
 File: `config/voidfps.properties`
 
+- `adaptiveCullingEnabled`
 - `tinyPickupCullingEnabled`
 - `itemEntityCullingEnabled`
 - `experienceOrbCullingEnabled`
@@ -86,7 +97,7 @@ File: `config/voidfps.properties`
 - Client-only; no server installation is required.
 - Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling without bundling or duplicating them.
 - Mixins are version-sensitive. A successful compile does not prove that every injection behaves correctly in a live Minecraft session.
-- Normal terrain visibility is preserved. No custom replacement chunk renderer or measured FPS gain is claimed yet.
+- Normal terrain visibility is preserved. This version does not contain a custom replacement chunk renderer, chunk-region draw batching, or a compact custom terrain vertex format.
 - Performance gains and side effects must be measured in Minecraft on the target hardware. No FPS multiplier is promised.
 
 ## Build
