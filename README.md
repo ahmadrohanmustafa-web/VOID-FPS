@@ -1,53 +1,41 @@
 # VOID FPS
 
-Client-side Fabric mod aimed at reducing **CPU-side** block and terrain rendering work in Minecraft Java
-Edition **26.3**, with low-end hardware (for example Intel HD Graphics 520) as the target.
+Client-side Fabric project for investigating CPU-side block and terrain rendering work in Minecraft Java Edition **26.3**.
 
-> **Current status: scaffold. No optimization is implemented or active.**
-> The mod loads, logs one line, and changes nothing. This is deliberate: no Minecraft 26.3 mixin target
-> could be verified in the environment this was produced in, and unverified mixins would be guesses.
+> **Current verdict: no additional optimization is enabled.** The 26.3 Minecraft client bytecode was inspected through the successful GitHub Actions build. Vanilla already performs face-occlusion caching, so adding a second cache for the same checks would duplicate existing work. No other candidate has yet met the evidence and benchmark requirements below.
 
-## What is in this repository
+## Verified project status
 
-| Path | Status |
-|---|---|
-| `build.gradle`, `settings.gradle`, `gradle.properties` | Written from sources listed in `docs/INVESTIGATION.md`. **Never executed.** |
-| `gradle/wrapper/gradle-wrapper.properties` | Present. `gradlew`, `gradlew.bat` and the wrapper JAR are **missing**; generate them (see below). |
-| `src/main/resources/fabric.mod.json` | Client-only, depends on Loader >= 0.19.5, Minecraft ~26.3, Java >= 25. **Never loaded.** |
-| `src/main/java/dev/voidfps/**` | Client entrypoint that logs a status line. Not compiled here (no JDK 25). |
-| `tools/inspect_targets.py` | Dumps real 26.3 method signatures from the Minecraft jar. Logic tested against a synthetic jar only. |
-| `docs/INVESTIGATION.md` | What was researched, what is verified, what vanilla already does. |
-| `docs/NEXT_STEPS.md` | Exactly what is needed to implement the real optimizations. |
-| `docs/templates/voidfps.mixins.json` | Mixin config template, intentionally **not** registered (no mixins exist). |
-| `.github/workflows/build.yml` | Untested CI that builds and uploads the signature dump. |
+- GitHub Actions successfully builds the project with Java 25 and Gradle 9.6.0.
+- The build produces a client JAR and a source JAR.
+- The client entrypoint only logs a status message. It does not modify rendering.
+- The inspection artifact includes signatures and bytecode for `Block`, `ModelBlockRenderer`, and `SectionCompiler`.
+- The inspected vanilla `Block.shouldRenderFace` uses a thread-local, 256-entry LRU-style cache keyed by the two face-occlusion shapes. `ModelBlockRenderer.shouldRenderFace` delegates to that vanilla method.
+- No in-game launch, visual-equivalence test, or before/after performance benchmark has been performed.
 
-## Requirements
+## Scope
 
-- Minecraft Java Edition 26.3
-- Fabric Loader 0.19.5 or newer
-- Java 25
-- Fabric API is **not** required
+Only block and terrain rendering. Out of scope: entities, particles, HUD/overlays, keybinds, automatic setting changes, chunk scheduling, startup/GUI optimization, gameplay, and anything that lowers visual quality.
+
+## Why no optimization was added
+
+The most obvious proposed optimization—caching repeated block-face visibility checks—is already implemented by Minecraft 26.3. Reimplementing it in VOID FPS would add another lookup/cache and could make performance or memory use worse.
+
+The inspection also found vanilla's existing renderer and tint-cache paths. No further change is accepted until actual 26.3 bytecode/source proves redundant work that can safely be removed without changing output geometry, lighting, ambient occlusion, tint, or texture behavior.
+
+## What is still untested
+
+1. Launching Minecraft 26.3 with this JAR and confirming the client loads.
+2. Checking the latest log for errors.
+3. Comparing screenshots/world geometry with and without the mod.
+4. Measuring a repeatable baseline and modded run on the same world and settings.
+
+A successful CI build is not a runtime test and does not demonstrate an FPS gain. Do not install this build expecting better FPS; it currently makes no rendering changes.
 
 ## Build
 
-    gradle wrapper --gradle-version 9.6.0   # once; creates gradlew and the wrapper JAR
-    ./gradlew build                          # output: build/libs/void-fps-0.1.0.jar
-
-Build result so far: **not run.** Runtime testing: **not performed.** Benchmarks: **none exist.**
-
-## Scope (fixed)
-
-Only block and terrain rendering. Out of scope: entities, particles, HUD/overlays, keybinds, automatic
-setting changes, chunk scheduling, startup/GUI optimization, gameplay, and anything that lowers visual
-quality. No configuration screen; the mod works automatically once installed.
-
-## Honest performance expectations
-
-None can be stated. Vanilla already culls hidden faces and caches light/AO inputs, so the remaining headroom
-may be small. CPU-side changes in this mod cannot speed up a GPU-bound scene; on HD Graphics 520 the GPU is
-often the limit. Any future optimization will be kept only if it shows a measured CPU-side gain with
-unchanged geometry; otherwise it will be removed.
+The GitHub Actions workflow builds with Java 25 and Gradle 9.6.0. Download the `void-fps-build` artifact from the latest successful run in the Actions tab. It contains the JAR, sources JAR, and inspection output.
 
 ## License
 
-MIT, see `LICENSE`. The copyright holder line ("VOID FPS contributors") is a placeholder; change it.
+MIT. See `LICENSE`.
