@@ -41,6 +41,7 @@ TARGET_SIMPLE_NAMES = [
     "BlockAndTintGetter",
     "Block",
     "BlockBehaviour",
+    "BlockStateBase",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -58,7 +59,7 @@ KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-BYTECODE_CLASSES = ["ModelBlockRenderer", "SectionCompiler"]
+BYTECODE_CLASSES = ["ModelBlockRenderer", "SectionCompiler", "Block", "BlockStateBase"]
 
 
 def default_search_roots() -> list[Path]:
@@ -200,7 +201,7 @@ def main() -> int:
     if args.bytecode:
         for simple in BYTECODE_CLASSES:
             for internal in classes.get(simple, []):
-                if "$" in internal:
+                if re.search(r"\\$\\d+$", internal):
                     continue
                 path = args.out / f"{internal.rsplit('/', 1)[-1]}.bytecode.txt"
                 path.write_text(run_javap(args.javap, jar, internal, bytecode=True), encoding="utf-8")
