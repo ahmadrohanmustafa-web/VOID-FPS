@@ -6,7 +6,7 @@ Minecraft Java 26.3 · Fabric · Java 25+
 
 VOID FPS is a specialized block and terrain rendering optimization mod. It is not intended to replace Sodium or duplicate general-purpose optimization features.
 
-Its objective is to reduce repeated block-face visibility work while preserving Minecraft's own block models and the exact vanilla visibility decision.
+VOID FPS is limited to block-model face visibility. Minecraft 26.3 already performs normal hidden-face culling during section meshing. VOID FPS therefore does not add a second, unsafe occlusion rule; it memoizes repeated identical vanilla face-visibility queries within one block-model tessellation.
 
 ## Strict visual requirements
 
@@ -31,17 +31,13 @@ Its objective is to reduce repeated block-face visibility work while preserving 
 
 This is a narrow CPU-side optimization for models that ask the same directional visibility question multiple times. Ordinary cube models may not repeat those queries, so this change is not expected to produce a large universal FPS increase.
 
-### Chunk compilation scheduling
-
-The existing chunk compilation hook keeps synchronous section compilation on the dispatcher's asynchronous path. It changes scheduling, not the generated block geometry or graphics settings.
-
 ## Important rendering fact
 
 Minecraft 26.3 already removes many hidden opaque block faces during its own model tessellation. A second independent face-culling rule would usually duplicate vanilla work and could break special models. The safe first optimization is therefore to reuse identical vanilla face decisions rather than changing the visibility result.
 
 ## Current implementation status
 
-The repository cleanup and the face-decision cache compile successfully in GitHub Actions.
+The branch contains the repeated face-decision cache. Unrelated chunk-compilation scheduling has been removed so the mod stays within its block-rendering-only scope.
 
 This is **not yet a complete replacement terrain renderer**, and no measurable in-game FPS improvement has been established. Runtime mixin application, visual parity, and before/after performance still require testing in Minecraft 26.3.
 
@@ -60,7 +56,7 @@ Run:
 
 `gradle --no-daemon clean build`
 
-The JAR is generated in `build/libs/`.
+The JAR is generated in `build/libs/`. A successful build verifies compilation only; it does not establish runtime mixin compatibility or a measurable FPS gain.
 
 ## Compatibility
 
