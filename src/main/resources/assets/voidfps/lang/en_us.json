@@ -1,9 +1,1 @@
-{
-  "key.category.voidfps.main": "VOID FPS",
-  "key.voidfps.export_benchmark": "Export performance benchmark (CSV)",
-  "key.voidfps.toggle_hud": "Toggle performance monitor",
-  "key.voidfps.toggle_pickup_culling": "Toggle pickup culling",
-  "key.voidfps.reset_counters": "Reset render counters",
-  "key.voidfps.toggle_particle_culling": "Toggle tiny-particle culling",
-  "key.voidfps.toggle_adaptive_culling": "Toggle adaptive render culling"
-}
+{}
