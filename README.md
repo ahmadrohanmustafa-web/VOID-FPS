@@ -115,15 +115,3 @@ The remapped JAR is in `build/libs/`. GitHub Actions builds every push and pull 
 - VOID UI: HUD and inventory/container interface efficiency and customization.
 
 License: MIT.
-
-
-## Automatic render distance (F6)
-
-F6 enables an optional frame-time controller. It records the render distance
-active when enabled, then adjusts it gradually within a four-chunk lower range.
-It lowers distance after sustained frame times of 33.3 ms or more and raises it
-only after sustained frame times of 23.5 ms or less. Each change has a cooldown
-to avoid repeatedly rebuilding chunks. Press F6 again to disable it and restore
-the original distance. This trades some view distance for smoother performance
-when the CPU or GPU is overloaded; it does not replace Minecraft's terrain
-renderer and cannot guarantee an FPS increase.

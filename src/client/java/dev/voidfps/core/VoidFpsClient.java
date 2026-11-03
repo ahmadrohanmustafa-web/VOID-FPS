@@ -20,14 +20,12 @@ public final class VoidFpsClient implements ClientModInitializer {
     private static final ClientTickMonitor TICK_MONITOR = new ClientTickMonitor();
     private static final GarbageCollectionMonitor GC_MONITOR = new GarbageCollectionMonitor();
     private static final AdaptiveCullingController ADAPTIVE_CULLING = new AdaptiveCullingController();
-    private static final AutoRenderDistanceController AUTO_DISTANCE = new AutoRenderDistanceController();
     private static final VoidFpsConfig CONFIG = new VoidFpsConfig();
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
-    private static KeyMapping exportKey, hudKey, pickupCullingKey, resetCountersKey, particleCullingKey, adaptiveKey, autoDistanceKey;
+    private static KeyMapping exportKey, hudKey, pickupCullingKey, resetCountersKey, particleCullingKey, adaptiveKey;
     private static int refreshCounter;
     private static int adaptiveTickCounter;
-    private static int autoDistanceTickCounter;
     private static String cachedText = "";
     private static volatile int cachedScreenHeight;
     private static volatile double cachedPickupScreenScale;
@@ -42,7 +40,6 @@ public final class VoidFpsClient implements ClientModInitializer {
         resetCountersKey = register("key.voidfps.reset_counters", InputConstants.KEY_F12);
         particleCullingKey = register("key.voidfps.toggle_particle_culling", InputConstants.KEY_F8);
         adaptiveKey = register("key.voidfps.toggle_adaptive_culling", InputConstants.KEY_F7);
-        autoDistanceKey = register("key.voidfps.toggle_auto_distance", InputConstants.KEY_F6);
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> TICK_MONITOR.beginTick(System.nanoTime()));
 
@@ -87,18 +84,13 @@ public final class VoidFpsClient implements ClientModInitializer {
                 CONFIG.save();
                 notifyPlayer(client, "VOID FPS adaptive culling: " + (CONFIG.adaptiveCullingEnabled ? "ON" : "OFF"));
             }
-            if (++autoDistanceTickCounter >= 40) {
-                autoDistanceTickCounter = 0;
-                AUTO_DISTANCE.update(client, MONITOR.averageFrameTimeMs());
-            }
-            while (autoDistanceKey.consumeClick()) AUTO_DISTANCE.toggle(client);
             TICK_MONITOR.endTick(System.nanoTime());
         });
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "performance_monitor"),
                 (graphics, delta) -> renderHud(Minecraft.getInstance(), graphics));
         CompatibilityManager.logDetectedMods();
-        LOGGER.info("VOID FPS Core initialized. F6 auto render distance; F7 adaptive culling; F8 tiny-particle culling; F9 benchmark export; F10 monitor; F11 pickup culling; F12 reset counters.");
+        LOGGER.info("VOID FPS Core initialized. F7 adaptive culling; F8 tiny-particle culling; F9 benchmark export; F10 monitor; F11 pickup culling; F12 reset counters.");
     }
 
     private static KeyMapping register(String key, int code) {

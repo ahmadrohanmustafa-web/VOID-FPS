@@ -5,6 +5,5 @@
   "key.voidfps.toggle_pickup_culling": "Toggle pickup culling",
   "key.voidfps.reset_counters": "Reset render counters",
   "key.voidfps.toggle_particle_culling": "Toggle tiny-particle culling",
-  "key.voidfps.toggle_adaptive_culling": "Toggle adaptive render culling",
-  "key.voidfps.toggle_auto_distance": "Toggle automatic render distance"
+  "key.voidfps.toggle_adaptive_culling": "Toggle adaptive render culling"
 }
