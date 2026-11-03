@@ -1,14 +1,18 @@
 {
- "schemaVersion":1,
- "id":"voidfps",
- "version":"${version}",
- "name":"VOID FPS Core",
- "description":"Client-side rendering workload optimizations that preserve the player's graphics settings.",
- "authors":["VOID FPS Project"],
- "contact":{"sources":"https://github.com/ahmadrohanmustafa-web/VOID-FPS"},
- "license":"MIT",
- "environment":"client",
- "entrypoints":{"client":["dev.voidfps.core.VoidFpsClient"]},
- "mixins":[{"config":"voidfps.client.mixins.json","environment":"client"}],
- "depends":{"fabricloader":">=0.19.5","minecraft":"~26.3","java":">=25","fabric-api":">=0.164.0+26.3"}
+  "schemaVersion": 1,
+  "id": "voidfps",
+  "version": "${version}",
+  "name": "VOID FPS",
+  "description": "Client-side block and terrain rendering optimization for low-end hardware. Currently ships NO active optimizations; see README.",
+  "authors": ["VOID FPS contributors"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.voidfps.client.VoidFpsClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  }
 }
