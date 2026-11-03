@@ -4,32 +4,44 @@ Minecraft Java 26.3 · Fabric · Java 25+
 
 ## Objective
 
-Improve in-game frame pacing and reduce rendering workload without changing the player's graphics options. VOID FPS does not lower render distance, simulation distance, particle quality, clouds, shadows, ambient occlusion, or other video settings.
+Improve in-game frame pacing and reduce rendering workload without changing the player's graphics options or making the world visually incomplete.
+
+VOID FPS does not lower render distance, simulation distance, particle quality, clouds, shadows, ambient occlusion, or other video settings.
+
+## Block rendering: design and technical boundary
+
+VOID FPS preserves normal Minecraft block rendering and all six original face textures.
+
+Minecraft does not render a solid filled cube for every block. Its chunk renderer builds meshes from block-model faces, and the vanilla model renderer already omits many faces covered by neighboring opaque blocks. A texture also cannot be displayed without some geometry carrying it.
+
+The target for a future VOID mesh optimization is therefore not to delete a block's interior (Minecraft does not draw a solid interior volume). It is to reduce the cost of building, storing, uploading, and drawing chunk meshes while retaining every face that can contribute to the correct image.
+
+Any custom mesh path must preserve:
+- all visible faces and original texture UVs;
+- block tint, biome tint, ambient occlusion, light values and shading;
+- cutout, translucent, emissive and animated block models;
+- non-cube models, fluids, block entities and modded models;
+- chunk-boundary visibility and correct rebuilds after block changes;
+- the original world data, collision, interaction, mining, placing and updates.
+
+A naive camera-facing-only face filter is not correct for a 3D world: a face facing away from the camera can still be visible on a different block, and translucent/custom models have different rules. VOID FPS will not use that shortcut.
 
 ## Implemented optimization systems
 
-### 1. Terrain block-render suppression
-
-- Skips the final client terrain-geometry draw submission for chunk-section render groups.
-- This intentionally makes normal terrain blocks invisible.
-- It does **not** delete blocks or change chunk palettes, block states, textures/assets, block behavior, collision, raycasts, mining/placing, block updates, lighting data, block-entity data, packets, or server state.
-- World simulation and interaction continue. This is a visual rendering suppression feature, not world editing.
-- Block entity rendering is not intentionally disabled by this mixin.
-
-### 2. Chunk compilation scheduling
+### 1. Chunk compilation scheduling
 
 - Redirects the synchronous section-mesh compilation path to the dispatcher's asynchronous compile queue.
 - Uses the existing immutable section-region snapshot and vanilla compilation implementation; it does not change block data or visual settings.
 - Intended to reduce render-thread stalls during chunk updates.
 
-### 3. Pickup render-state culling
+### 2. Pickup render-state culling
 
 - Configurable subpixel culling for ordinary dropped item entities and experience orbs.
 - Separate item and orb switches, plus a master pickup-culling switch.
 - Custom-named pickups are preserved.
 - Entities remain loaded and simulated; only render-state extraction is skipped below the configured projected-size threshold.
 
-### 4. Particle render-state culling
+### 3. Particle render-state culling
 
 - Checks projected on-screen diameter of single-quad particles before render-state creation.
 - Subpixel particles are skipped only during rendering. Particle ticking, lifetime, movement, collision, spawning, and effects continue normally.
@@ -37,7 +49,7 @@ Improve in-game frame pacing and reduce rendering workload without changing the 
 - Separate enable switch and configurable threshold. F8 toggles this feature at runtime.
 - Does not change Minecraft's particle quality setting or particle spawn limit.
 
-### 5. Monitoring and benchmarking
+### 4. Monitoring and benchmarking
 
 - F9 exports up to 30 seconds of frame-time samples and up to 60 seconds of client-tick samples to `config/voidfps/`.
 - CSV includes frame average/p99/1% low/min/max, client tick average/p95/maximum, counts of frame/tick spikes above 50 ms and 100 ms, plus per-category culling counters.
@@ -74,7 +86,7 @@ File: `config/voidfps.properties`
 - Client-only; no server installation is required.
 - Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling without bundling or duplicating them.
 - Mixins are version-sensitive. A successful compile does not prove that every injection behaves correctly in a live Minecraft session.
-- Terrain block rendering is intentionally suppressed, so this is not a normal-visibility gameplay profile.
+- Normal terrain visibility is preserved. No custom replacement chunk renderer or measured FPS gain is claimed yet.
 - Performance gains and side effects must be measured in Minecraft on the target hardware. No FPS multiplier is promised.
 
 ## Build
