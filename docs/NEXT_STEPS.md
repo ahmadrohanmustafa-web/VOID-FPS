@@ -1,51 +1,23 @@
-# What is needed next (in order)
+# Remaining validation
 
-Nothing below can be done by guessing. Each step unlocks the next one.
+The Minecraft 26.3 source/bytecode inspection is complete for the current face-visibility candidate.
 
-## 1. Build the skeleton and report the result
+## What the evidence established
 
-1. Install **JDK 25** (Temurin or similar) and make sure `java -version` says 25.
-2. Install Gradle 9.6.0 once (or use any Gradle 9.x), then generate the wrapper, which this repo cannot ship
-   (it needs a binary JAR that could not be produced here):
+Vanilla Minecraft 26.3 already caches block-face occlusion results in a thread-local 256-entry cache. The renderer delegates to that method. VOID FPS therefore does not add a duplicate cache or an unverified rendering mixin.
 
-       gradle wrapper --gradle-version 9.6.0
+No other optimization has met the evidence and benchmark requirements. The current JAR is behavior-neutral and must not be advertised as an FPS boost.
 
-   That creates `gradlew`, `gradlew.bat` and `gradle/wrapper/gradle-wrapper.jar`. Commit them.
-3. Run `./gradlew build` and send me the **full** output if it fails. Likely failure points, since the build
-   has never been run: the Loom artifact string in `gradle.properties`, and the `minecraft` / `implementation`
-   dependency lines in `build.gradle`.
-4. Run `./gradlew runClient` and send `run/logs/latest.log` (the line starting `VOID FPS loaded` should appear).
+## User-side tests still required
 
-## 2. Dump the real 26.3 signatures
+1. Install Java 25 and Minecraft Java Edition 26.3 with Fabric Loader 0.19.5 or newer.
+2. Put the built `void-fps-0.1.0.jar` in the instance's `mods` folder.
+3. Launch the game and check `logs/latest.log` for the VOID FPS startup line and any errors.
+4. Load a test world and inspect blocks with different shapes and transparency.
+5. Compare the same scene and settings with and without the mod.
 
-    python3 tools/inspect_targets.py --bytecode
+Because this build does not change rendering, it is only a compatibility/load test. It is not a performance benchmark and no FPS improvement should be expected.
 
-Use JDK 25's `javap` (`--javap /path/to/jdk-25/bin/javap` if needed). Send these files:
+## Next development decision
 
-- `build/void-fps-inspect/signatures.txt`
-- `build/void-fps-inspect/summary.md`
-- `build/void-fps-inspect/ModelBlockRenderer.bytecode.txt`
-- `build/void-fps-inspect/SectionCompiler.bytecode.txt`
-
-Alternative with no local setup: push to GitHub and download the `void-fps-build` artifact from the
-Actions run (`.github/workflows/build.yml`, untested). It contains the same files.
-
-## 3. Send the decompiled source of the hot path
-
-Run `./gradlew genSources`, open the 26.3 sources in your IDE and paste (or attach) the full text of:
-
-- `ModelBlockRenderer` (including its `Cache`)
-- `SectionCompiler`
-- whichever method `summary.md` shows as deciding whether a block face is rendered (the
-  `shouldRenderFace`-style method, wherever it lives in 26.3)
-
-## 4. Then, and only then
-
-With the above I can: decide whether each candidate in `docs/INVESTIGATION.md` section D is redundant,
-write the mixins with exact descriptors, register `voidfps.mixins.json` (template in `docs/templates/`),
-add an A/B toggle and tests, and give you a benchmark protocol that you run on the HD Graphics 520 machine.
-
-## Things that stay your job
-
-- Launching Minecraft 26.3, loading worlds, comparing visuals with and without the mod.
-- Before/after measurements on your hardware. No numbers exist for this project.
+Do not add a mixin merely to make the mod appear active. A new candidate must first be demonstrated in the Minecraft 26.3 source/bytecode as redundant work not already avoided by vanilla, then pass geometry-equivalence and repeatable performance tests.
