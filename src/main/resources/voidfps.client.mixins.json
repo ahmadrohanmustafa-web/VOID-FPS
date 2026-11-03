@@ -3,7 +3,8 @@
   "package": "dev.voidfps.core.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "ChunkCompileSchedulingMixin"
+    "ChunkCompileSchedulingMixin",
+    "BlockModelRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
