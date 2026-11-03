@@ -19,11 +19,13 @@ public final class VoidFpsClient implements ClientModInitializer {
     private static final FrameTimeMonitor MONITOR = new FrameTimeMonitor();
     private static final ClientTickMonitor TICK_MONITOR = new ClientTickMonitor();
     private static final GarbageCollectionMonitor GC_MONITOR = new GarbageCollectionMonitor();
+    private static final AdaptiveCullingController ADAPTIVE_CULLING = new AdaptiveCullingController();
     private static final VoidFpsConfig CONFIG = new VoidFpsConfig();
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
-    private static KeyMapping exportKey, hudKey, pickupCullingKey, resetCountersKey, particleCullingKey;
+    private static KeyMapping exportKey, hudKey, pickupCullingKey, resetCountersKey, particleCullingKey, adaptiveKey;
     private static int refreshCounter;
+    private static int adaptiveTickCounter;
     private static String cachedText = "";
     private static volatile int cachedScreenHeight;
     private static volatile double cachedPickupScreenScale;
@@ -37,13 +39,20 @@ public final class VoidFpsClient implements ClientModInitializer {
         pickupCullingKey = register("key.voidfps.toggle_pickup_culling", InputConstants.KEY_F11);
         resetCountersKey = register("key.voidfps.reset_counters", InputConstants.KEY_F12);
         particleCullingKey = register("key.voidfps.toggle_particle_culling", InputConstants.KEY_F8);
+        adaptiveKey = register("key.voidfps.toggle_adaptive_culling", InputConstants.KEY_F7);
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> TICK_MONITOR.beginTick(System.nanoTime()));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             cachedScreenHeight = client.getWindow().getHeight();
-            cachedPickupScreenScale = cachedScreenHeight * CONFIG.pickupProjectionScale();
-            cachedParticleScreenScale = cachedScreenHeight * CONFIG.particleProjectionScale();
+            if (++adaptiveTickCounter >= 10) {
+                adaptiveTickCounter = 0;
+                if (CONFIG.adaptiveCullingEnabled) ADAPTIVE_CULLING.update(MONITOR.lastFrameTimeMs());
+                else ADAPTIVE_CULLING.reset();
+            }
+            double adaptiveScale = CONFIG.adaptiveCullingEnabled ? ADAPTIVE_CULLING.multiplier() : 1.0;
+            cachedPickupScreenScale = cachedScreenHeight * CONFIG.pickupProjectionScale() * adaptiveScale;
+            cachedParticleScreenScale = cachedScreenHeight * CONFIG.particleProjectionScale() * adaptiveScale;
             GC_MONITOR.poll(System.nanoTime());
             while (exportKey.consumeClick()) {
                 BenchmarkExporter.export(MONITOR, TICK_MONITOR);
@@ -69,13 +78,19 @@ public final class VoidFpsClient implements ClientModInitializer {
                 CONFIG.save();
                 notifyPlayer(client, "VOID FPS tiny-particle culling: " + (CONFIG.tinyParticleCullingEnabled ? "ON" : "OFF"));
             }
+            while (adaptiveKey.consumeClick()) {
+                CONFIG.adaptiveCullingEnabled = !CONFIG.adaptiveCullingEnabled;
+                if (!CONFIG.adaptiveCullingEnabled) ADAPTIVE_CULLING.reset();
+                CONFIG.save();
+                notifyPlayer(client, "VOID FPS adaptive culling: " + (CONFIG.adaptiveCullingEnabled ? "ON" : "OFF"));
+            }
             TICK_MONITOR.endTick(System.nanoTime());
         });
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "performance_monitor"),
                 (graphics, delta) -> renderHud(Minecraft.getInstance(), graphics));
         CompatibilityManager.logDetectedMods();
-        LOGGER.info("VOID FPS Core initialized. F8 toggles tiny-particle culling; F9 exports benchmark; F10 toggles monitor; F11 toggles pickup culling; F12 resets counters.");
+        LOGGER.info("VOID FPS Core initialized. F7 adaptive culling; F8 tiny-particle culling; F9 benchmark export; F10 monitor; F11 pickup culling; F12 reset counters.");
     }
 
     private static KeyMapping register(String key, int code) {
@@ -112,10 +127,11 @@ public final class VoidFpsClient implements ClientModInitializer {
         FrameTimeMonitor.Stats stats = MONITOR.stats();
         ClientTickMonitor.Stats tickStats = TICK_MONITOR.stats();
         GarbageCollectionMonitor.Stats gcStats = GC_MONITOR.stats();
-        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | spikes F:%d/%d T:%d/%d | GC %d / %d ms | heap %d MB | pickups %d | particles %d",
+        return String.format("VOID FPS | %d FPS | frame %.1f/%.1f ms | tick %.2f/%.2f ms p95 | 1%% low %.0f | spikes F:%d/%d T:%d/%d | GC %d / %d ms | heap %d MB | pickups %d | particles %d | adaptive %.2fx",
                 client.getFps(), stats.averageFrameTimeMs(), stats.p99FrameTimeMs(),
                 tickStats.averageMs(), tickStats.p95Ms(), stats.onePercentLowFps(),
                 stats.framesOver50Ms(), stats.framesOver100Ms(), tickStats.ticksOver50Ms(), tickStats.ticksOver100Ms(),
-                gcStats.collectionsSinceStart(), gcStats.collectionTimeMs(), ram, PickupCullingStats.totalStatesSkipped(), ParticleCullingStats.totalStatesSkipped());
+                gcStats.collectionsSinceStart(), gcStats.collectionTimeMs(), ram, PickupCullingStats.totalStatesSkipped(),
+                ParticleCullingStats.totalStatesSkipped(), CONFIG.adaptiveCullingEnabled ? ADAPTIVE_CULLING.multiplier() : 1.0);
     }
 }
