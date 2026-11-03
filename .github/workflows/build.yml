@@ -1,28 +1,39 @@
-name: Build VOID FPS Core
+# UNTESTED workflow. Builds the mod with JDK 25 + Gradle 9.6.0 and dumps the real
+# Minecraft 26.3 method signatures so mixin targets can be verified without a local setup.
+name: build
+
 on:
- push:
-  branches: [ main ]
- pull_request:
-  branches: [ main ]
- workflow_dispatch:
-permissions:
- contents: read
+  push:
+  pull_request:
+  workflow_dispatch:
+
 jobs:
- build:
-  runs-on: ubuntu-latest
-  steps:
-   - uses: actions/checkout@v6
-   - uses: actions/setup-java@v5
-     with:
-      distribution: microsoft
-      java-version: '25'
-   - uses: gradle/actions/setup-gradle@v6
-     with:
-      gradle-version: '9.8.2'
-   - name: Build mod
-     run: gradle --no-daemon clean build
-   - uses: actions/upload-artifact@v7
-     with:
-      name: void-fps-core
-      path: build/libs/void-fps-core-*.jar
-      if-no-files-found: error
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Build
+        run: gradle build --no-daemon
+
+      - name: Dump Minecraft 26.3 target signatures
+        if: always()
+        continue-on-error: true
+        run: python3 tools/inspect_targets.py --bytecode --out build/void-fps-inspect
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: void-fps-build
+          path: |
+            build/libs/*.jar
+            build/void-fps-inspect/
