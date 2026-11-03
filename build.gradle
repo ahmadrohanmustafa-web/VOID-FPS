@@ -1,25 +1,55 @@
+// VOID FPS - Fabric client mod for Minecraft 26.3.
+//
+// Minecraft 26.x is unobfuscated: the non-remapping Loom plugin id is used,
+// there is NO mappings() line, NO modImplementation, and NO remapJar.
+// (Plugin id source: https://docs.fabricmc.net/develop/loom/)
+//
+// STATUS: this file has NOT been executed. The build environment that produced
+// this project had no Gradle, no JDK 25 and no network access.
+
 plugins {
- id 'net.fabricmc.fabric-loom' version "${loom_version}"
- id 'maven-publish'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
+
 version = project.mod_version
 group = project.maven_group
-base { archivesName = project.archives_base_name }
-loom {
- splitEnvironmentSourceSets()
- mods { "voidfps" { sourceSet sourceSets.main; sourceSet sourceSets.client } }
+
+base {
+    archivesName = project.archives_base_name
 }
-repositories { mavenCentral() }
+
 dependencies {
- minecraft "com.mojang:minecraft:${project.minecraft_version}"
- implementation "net.fabricmc:fabric-loader:${project.loader_version}"
- implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+    // Only Fabric Loader is needed (ClientModInitializer lives in net.fabricmc.api).
+    // Fabric API is deliberately not a dependency: this mod uses none of it.
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 }
+
 processResources {
- inputs.property "version", project.version
- filesMatching("fabric.mod.json") { expand "version": project.version }
+    inputs.property 'version', project.version
+
+    filesMatching('fabric.mod.json') {
+        expand 'version': inputs.properties.version
+    }
 }
-tasks.withType(JavaCompile).configureEach { options.release = 25; options.encoding = 'UTF-8' }
-java { sourceCompatibility = JavaVersion.VERSION_25; targetCompatibility = JavaVersion.VERSION_25; withSourcesJar() }
-jar { from("LICENSE") { rename { "${it}_${project.base.archivesName.get()}" } } }
-publishing { publications { create("mavenJava", MavenPublication) { from components.java } } }
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = 'UTF-8'
+}
+
+java {
+    // Minecraft 26.x requires Java 25.
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+
+jar {
+    inputs.property 'archivesName', project.base.archivesName
+
+    from('LICENSE') {
+        rename { "${it}_${inputs.properties.archivesName}" }
+    }
+}

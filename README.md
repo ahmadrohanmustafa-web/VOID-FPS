@@ -1,117 +1,53 @@
-# VOID FPS Core
+# VOID FPS
 
-Minecraft Java 26.3 · Fabric · Java 25+
+Client-side Fabric mod aimed at reducing **CPU-side** block and terrain rendering work in Minecraft Java
+Edition **26.3**, with low-end hardware (for example Intel HD Graphics 520) as the target.
 
-## Objective
+> **Current status: scaffold. No optimization is implemented or active.**
+> The mod loads, logs one line, and changes nothing. This is deliberate: no Minecraft 26.3 mixin target
+> could be verified in the environment this was produced in, and unverified mixins would be guesses.
 
-Improve in-game frame pacing and reduce rendering workload without changing the player's graphics options or making the world visually incomplete.
+## What is in this repository
 
-VOID FPS does not lower render distance, simulation distance, particle quality, clouds, shadows, ambient occlusion, or other video settings.
+| Path | Status |
+|---|---|
+| `build.gradle`, `settings.gradle`, `gradle.properties` | Written from sources listed in `docs/INVESTIGATION.md`. **Never executed.** |
+| `gradle/wrapper/gradle-wrapper.properties` | Present. `gradlew`, `gradlew.bat` and the wrapper JAR are **missing**; generate them (see below). |
+| `src/main/resources/fabric.mod.json` | Client-only, depends on Loader >= 0.19.5, Minecraft ~26.3, Java >= 25. **Never loaded.** |
+| `src/main/java/dev/voidfps/**` | Client entrypoint that logs a status line. Not compiled here (no JDK 25). |
+| `tools/inspect_targets.py` | Dumps real 26.3 method signatures from the Minecraft jar. Logic tested against a synthetic jar only. |
+| `docs/INVESTIGATION.md` | What was researched, what is verified, what vanilla already does. |
+| `docs/NEXT_STEPS.md` | Exactly what is needed to implement the real optimizations. |
+| `docs/templates/voidfps.mixins.json` | Mixin config template, intentionally **not** registered (no mixins exist). |
+| `.github/workflows/build.yml` | Untested CI that builds and uploads the signature dump. |
 
-## Block rendering: design and technical boundary
+## Requirements
 
-VOID FPS preserves normal Minecraft block rendering and all six original face textures.
-
-Minecraft does not render a solid filled cube for every block. Its chunk renderer builds meshes from block-model faces, and the vanilla model renderer already omits many faces covered by neighboring opaque blocks. A texture also cannot be displayed without some geometry carrying it.
-
-The target for a future VOID mesh optimization is therefore not to delete a block's interior (Minecraft does not draw a solid interior volume). It is to reduce the cost of building, storing, uploading, and drawing chunk meshes while retaining every face that can contribute to the correct image.
-
-Any custom mesh path must preserve:
-- all visible faces and original texture UVs;
-- block tint, biome tint, ambient occlusion, light values and shading;
-- cutout, translucent, emissive and animated block models;
-- non-cube models, fluids, block entities and modded models;
-- chunk-boundary visibility and correct rebuilds after block changes;
-- the original world data, collision, interaction, mining, placing and updates.
-
-A naive camera-facing-only face filter is not correct for a 3D world: a face facing away from the camera can still be visible on a different block, and translucent/custom models have different rules. VOID FPS will not use that shortcut.
-
-## Implemented optimization systems
-
-### 1. Chunk compilation scheduling
-
-- Redirects the synchronous section-mesh compilation path to the dispatcher's asynchronous compile queue.
-- Uses the existing immutable section-region snapshot and vanilla compilation implementation; it does not change block data or visual settings.
-- Intended to reduce render-thread stalls during chunk updates.
-
-### 2. Pickup render-state culling
-
-- Configurable subpixel culling for ordinary dropped item entities and experience orbs.
-- Separate item and orb switches, plus a master pickup-culling switch.
-- Custom-named pickups are preserved.
-- Entities remain loaded and simulated; only render-state extraction is skipped below the configured projected-size threshold.
-
-### 3. Particle render-state culling
-
-- Checks projected on-screen diameter of single-quad particles before render-state creation.
-- Subpixel particles are skipped only during rendering. Particle ticking, lifetime, movement, collision, spawning, and effects continue normally.
-- Vibration signal particles are explicitly preserved.
-- Separate enable switch and configurable threshold. F8 toggles this feature at runtime.
-- Does not change Minecraft's particle quality setting or particle spawn limit.
-
-### 4. Adaptive render culling
-
-- F7 toggles adaptive culling.
-- Monitors the most recent frame time with a low-cost sample; it does not sort the benchmark history every tick.
-- When frames remain slow, it gradually increases the distance threshold for tiny pickup and single-quad particle render-state culling, up to 2.5x.
-- When frame times recover, it gradually returns to the normal threshold.
-- Does not alter entity simulation, particle simulation, block rendering, render distance, or world data.
-- Disable with F7 or `adaptiveCullingEnabled=false` if you prefer fixed culling.
-
-### 5. Monitoring and benchmarking
-
-- F9 exports up to 30 seconds of frame-time samples and up to 60 seconds of client-tick samples to `config/voidfps/`.
-- CSV includes frame average/p99/1% low/min/max, client tick average/p95/maximum, counts of frame/tick spikes above 50 ms and 100 ms, plus per-category culling counters.
-- Client tick timing is measured separately from frame timing. It measures the client tick callback window, not integrated-server or remote-server tick time.
-- The diagnostic overlay is OFF by default. F10 toggles it; F11 toggles pickup culling; F12 resets render counters.
-- Overlay reports FPS, average and p99 frame time, average and p95 client tick time, 1% low, frame/tick spike counts, JVM GC collection count/time, approximate Java heap occupancy, skipped render-state counters, and the adaptive culling multiplier.
-- JVM GC counters are sampled once per second. VOID FPS never triggers garbage collection.
-- Rolling monitor buffers and scratch arrays are reused to limit diagnostic allocations.
-
-## Controls
-
-All controls can be rebound in Minecraft's Controls menu:
-
-- F7 — toggle adaptive culling
-- F8 — toggle tiny-particle culling
-- F9 — export benchmark CSV
-- F10 — toggle performance monitor
-- F11 — toggle pickup culling
-- F12 — reset render counters
-
-## Configuration
-
-File: `config/voidfps.properties`
-
-- `adaptiveCullingEnabled`
-- `tinyPickupCullingEnabled`
-- `itemEntityCullingEnabled`
-- `experienceOrbCullingEnabled`
-- `minimumPickupPixels` (0.25–2.0)
-- `tinyParticleCullingEnabled`
-- `minimumParticlePixels` (0.1–1.0)
-- `hudEnabled`
-
-## Compatibility and limitations
-
-- Client-only; no server installation is required.
-- Detects Sodium, Lithium, FerriteCore, ImmediatelyFast, and Entity Culling without bundling or duplicating them.
-- Mixins are version-sensitive. A successful compile does not prove that every injection behaves correctly in a live Minecraft session.
-- Normal terrain visibility is preserved. This version does not contain a custom replacement chunk renderer, chunk-region draw batching, or a compact custom terrain vertex format.
-- Performance gains and side effects must be measured in Minecraft on the target hardware. No FPS multiplier is promised.
+- Minecraft Java Edition 26.3
+- Fabric Loader 0.19.5 or newer
+- Java 25
+- Fabric API is **not** required
 
 ## Build
 
-Requirements: Minecraft 26.3, Fabric Loader 0.19.5+, Fabric API 0.164.0+26.3, Java 25+, Gradle 9.8.2.
+    gradle wrapper --gradle-version 9.6.0   # once; creates gradlew and the wrapper JAR
+    ./gradlew build                          # output: build/libs/void-fps-0.1.0.jar
 
-Run: `gradle --no-daemon clean build`
+Build result so far: **not run.** Runtime testing: **not performed.** Benchmarks: **none exist.**
 
-The remapped JAR is in `build/libs/`. GitHub Actions builds every push and pull request and uploads the JAR artifact.
+## Scope (fixed)
 
-## Ecosystem boundaries
+Only block and terrain rendering. Out of scope: entities, particles, HUD/overlays, keybinds, automatic
+setting changes, chunk scheduling, startup/GUI optimization, gameplay, and anything that lowers visual
+quality. No configuration screen; the mod works automatically once installed.
 
-- VOID FPS Core: in-world rendering and CPU/GPU performance optimization.
-- VOID Startup: startup, loading, title screen, main menu.
-- VOID UI: HUD and inventory/container interface efficiency and customization.
+## Honest performance expectations
 
-License: MIT.
+None can be stated. Vanilla already culls hidden faces and caches light/AO inputs, so the remaining headroom
+may be small. CPU-side changes in this mod cannot speed up a GPU-bound scene; on HD Graphics 520 the GPU is
+often the limit. Any future optimization will be kept only if it shows a measured CPU-side gain with
+unchanged geometry; otherwise it will be removed.
+
+## License
+
+MIT, see `LICENSE`. The copyright holder line ("VOID FPS contributors") is a placeholder; change it.
