@@ -4,8 +4,7 @@
 // there is NO mappings() line, NO modImplementation, and NO remapJar.
 // (Plugin id source: https://docs.fabricmc.net/develop/loom/)
 //
-// STATUS: this file has NOT been executed. The build environment that produced
-// this project had no Gradle, no JDK 25 and no network access.
+// Verified by the GitHub Actions workflow with Java 25 and Gradle 9.6.0.
 
 plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
