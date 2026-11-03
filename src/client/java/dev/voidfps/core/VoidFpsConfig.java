@@ -14,6 +14,7 @@ public final class VoidFpsConfig {
     public boolean itemEntityCullingEnabled = true;
     public boolean experienceOrbCullingEnabled = true;
     public boolean tinyParticleCullingEnabled = true;
+    public boolean adaptiveCullingEnabled = true;
     public double minimumPickupPixels = 0.75;
     public double minimumParticlePixels = 0.35;
     private double pickupProjectionScale = calculateProjectionScale(minimumPickupPixels);
@@ -30,6 +31,7 @@ public final class VoidFpsConfig {
             itemEntityCullingEnabled = readBoolean(properties, "itemEntityCullingEnabled", true);
             experienceOrbCullingEnabled = readBoolean(properties, "experienceOrbCullingEnabled", true);
             tinyParticleCullingEnabled = readBoolean(properties, "tinyParticleCullingEnabled", true);
+            adaptiveCullingEnabled = readBoolean(properties, "adaptiveCullingEnabled", true);
             minimumPickupPixels = readDouble(properties, "minimumPickupPixels", 0.75, 0.25, 2.0);
             minimumParticlePixels = readDouble(properties, "minimumParticlePixels", 0.35, 0.1, 1.0);
             refreshDerivedValues();
@@ -68,6 +70,7 @@ public final class VoidFpsConfig {
         p.setProperty("itemEntityCullingEnabled", Boolean.toString(itemEntityCullingEnabled));
         p.setProperty("experienceOrbCullingEnabled", Boolean.toString(experienceOrbCullingEnabled));
         p.setProperty("tinyParticleCullingEnabled", Boolean.toString(tinyParticleCullingEnabled));
+        p.setProperty("adaptiveCullingEnabled", Boolean.toString(adaptiveCullingEnabled));
         p.setProperty("minimumPickupPixels", Double.toString(minimumPickupPixels));
         p.setProperty("minimumParticlePixels", Double.toString(minimumParticlePixels));
         try {
