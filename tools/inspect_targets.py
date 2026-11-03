@@ -201,7 +201,7 @@ def main() -> int:
     if args.bytecode:
         for simple in BYTECODE_CLASSES:
             for internal in classes.get(simple, []):
-                if re.search(r"\\$\\d+$", internal):
+                if re.search(r"\$\d+$", internal):
                     continue
                 path = args.out / f"{internal.rsplit('/', 1)[-1]}.bytecode.txt"
                 path.write_text(run_javap(args.javap, jar, internal, bytecode=True), encoding="utf-8")
