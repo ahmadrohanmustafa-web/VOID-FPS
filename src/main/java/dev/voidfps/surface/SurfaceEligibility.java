@@ -24,7 +24,7 @@ public final class SurfaceEligibility {
      * Native-model gate for the narrow opaque full-cube candidate set. It checks native
      * block-state solidity, occlusion capability, block light emission, selected native
      * geometry, and native quad material metadata. It is still only an eligibility precheck:
-     * block-entity/custom-renderer exclusions and exact vanilla lighting/culling/output parity
+     * block-entity exclusion and exact vanilla lighting/culling/output parity
      * must be established before any custom renderer is activated.
      */
     public record NativeGeometryAnalysis(boolean supported, String rejectReason) {
@@ -34,6 +34,9 @@ public final class SurfaceEligibility {
             BlockState state, NativeModelSnapshot.Snapshot snapshot) {
         if (state == null) {
             return new NativeGeometryAnalysis(false, "block state is missing");
+        }
+        if (state.hasBlockEntity()) {
+            return new NativeGeometryAnalysis(false, "block state declares a block entity");
         }
         if (!state.isSolidRender()) {
             return new NativeGeometryAnalysis(false, "block state is not a solid render state");
