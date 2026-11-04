@@ -312,7 +312,7 @@ public final class SelfTest {
         check("native vertex count mismatch is detected",
                 !NativeVertexParity.compare(List.of(a, b), List.of(b), 0).matches());
         check("native vertex order mismatch is detected at equal count",
-                !NativeVertexParity.compare(List.of(a, b), List.of(b, a), 0).matches());
+                !NativeVertexParity.compare(List.of(a, wrongColor), List.of(wrongColor, a), 0).matches());
         check("native vertex null capture is rejected",
                 !NativeVertexParity.compare(null, List.of(a), 0).matches());
         check("native vertex invalid tolerance is rejected",
