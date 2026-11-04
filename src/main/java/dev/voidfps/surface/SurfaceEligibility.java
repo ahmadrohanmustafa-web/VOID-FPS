@@ -34,6 +34,10 @@ public final class SurfaceEligibility {
             return new NativeGeometryAnalysis(false,
                     "native model is not exactly one unit boundary quad per face");
         }
+        if (!snapshot.hasOnlyPlainSolidUntintedMaterials()) {
+            return new NativeGeometryAnalysis(false,
+                    "native quad material is not plain solid, untinted, static, and non-emissive");
+        }
         return new NativeGeometryAnalysis(true, null);
     }
 
