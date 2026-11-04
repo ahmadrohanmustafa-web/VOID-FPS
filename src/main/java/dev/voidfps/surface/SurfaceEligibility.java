@@ -1,5 +1,7 @@
 package dev.voidfps.surface;
 
+import net.minecraft.world.level.block.state.BlockState;
+
 /**
  * Decides whether a model can be rendered by the surface path. The decision is made from the
  * quad geometry itself, not only from block flags, so a mislabelled block cannot slip through.
