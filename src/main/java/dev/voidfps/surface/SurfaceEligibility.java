@@ -19,14 +19,29 @@ public final class SurfaceEligibility {
     }
 
     /**
-     * Native-model geometry gate. This deliberately stops before material or rendering
-     * eligibility: Minecraft's native MaterialInfo/layer/tint semantics must be checked by
-     * a later adapter before a custom output path can be considered.
+     * Native-model gate for the narrow opaque full-cube candidate set. It checks native
+     * block-state solidity, occlusion capability, block light emission, selected native
+     * geometry, and native quad material metadata. It is still only an eligibility precheck:
+     * block-entity/custom-renderer exclusions and exact vanilla lighting/culling/output parity
+     * must be established before any custom renderer is activated.
      */
     public record NativeGeometryAnalysis(boolean supported, String rejectReason) {
     }
 
-    public static NativeGeometryAnalysis analyzeNativeGeometry(NativeModelSnapshot.Snapshot snapshot) {
+    public static NativeGeometryAnalysis analyzeNativeModel(
+            BlockState state, NativeModelSnapshot.Snapshot snapshot) {
+        if (state == null) {
+            return new NativeGeometryAnalysis(false, "block state is missing");
+        }
+        if (!state.isSolidRender()) {
+            return new NativeGeometryAnalysis(false, "block state is not a solid render state");
+        }
+        if (!state.canOcclude()) {
+            return new NativeGeometryAnalysis(false, "block state cannot occlude neighbouring faces");
+        }
+        if (state.getLightEmission() != 0) {
+            return new NativeGeometryAnalysis(false, "block state emits light");
+        }
         if (snapshot == null || snapshot.isEmpty()) {
             return new NativeGeometryAnalysis(false, "native model has no selected parts");
         }
