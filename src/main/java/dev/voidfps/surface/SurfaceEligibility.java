@@ -1,6 +1,8 @@
 package dev.voidfps.surface;
 
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.Shapes;
 
 /**
  * Decides whether a model can be rendered by the surface path. The decision is made from the
@@ -24,7 +26,7 @@ public final class SurfaceEligibility {
      * Native-model gate for the narrow opaque full-cube candidate set. It checks native
      * block-state solidity, occlusion capability, block light emission, selected native
      * geometry, and native quad material metadata. It is still only an eligibility precheck:
-     * block-entity exclusion and exact vanilla lighting/culling/output parity
+     * block-entity exclusion, full native face-occlusion shapes, and exact vanilla lighting/culling/output parity
      * must be established before any custom renderer is activated.
      */
     public record NativeGeometryAnalysis(boolean supported, String rejectReason) {
@@ -43,6 +45,12 @@ public final class SurfaceEligibility {
         }
         if (!state.canOcclude()) {
             return new NativeGeometryAnalysis(false, "block state cannot occlude neighbouring faces");
+        }
+        for (Direction direction : Direction.values()) {
+            if (state.getFaceOcclusionShape(direction) != Shapes.block()) {
+                return new NativeGeometryAnalysis(false,
+                        "block state does not have a full-block occlusion shape on " + direction);
+            }
         }
         if (state.hasOffsetFunction()) {
             return new NativeGeometryAnalysis(false, "block state has a position-dependent model offset");
