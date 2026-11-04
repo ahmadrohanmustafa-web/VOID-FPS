@@ -1,54 +1,19 @@
-// VOID FPS - Fabric client mod for Minecraft 26.3.
-//
-// Minecraft 26.x is unobfuscated: the non-remapping Loom plugin id is used,
-// there is NO mappings() line, NO modImplementation, and NO remapJar.
-// (Plugin id source: https://docs.fabricmc.net/develop/loom/)
-//
-// Verified by the GitHub Actions workflow with Java 25 and Gradle 9.6.0.
-
+// UNVERIFIED: written without Gradle available. The core has no Minecraft dependency.
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
-}
-
-version = project.mod_version
-group = project.maven_group
-
-base {
-    archivesName = project.archives_base_name
-}
-
-dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-
-    // Only Fabric Loader is needed (ClientModInitializer lives in net.fabricmc.api).
-    // Fabric API is deliberately not a dependency: this mod uses none of it.
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-}
-
-processResources {
-    inputs.property 'version', project.version
-
-    filesMatching('fabric.mod.json') {
-        expand 'version': inputs.properties.version
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-    it.options.encoding = 'UTF-8'
+    id 'java-library'
 }
 
 java {
-    // Minecraft 26.x requires Java 25.
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-    withSourcesJar()
+    toolchain { languageVersion = JavaLanguageVersion.of(25) } // MC 26.x baseline; code is also valid on 21
 }
 
-jar {
-    inputs.property 'archivesName', project.base.archivesName
-
-    from('LICENSE') {
-        rename { "${it}_${inputs.properties.archivesName}" }
-    }
+sourceSets {
+    test { java { srcDir 'src/test/java' } }
 }
+
+tasks.register('selfTest', JavaExec) {
+    dependsOn classes, testClasses
+    classpath = sourceSets.main.output + sourceSets.test.output
+    mainClass = 'dev.voidfps.surface.SelfTest'
+}
+check.dependsOn selfTest
