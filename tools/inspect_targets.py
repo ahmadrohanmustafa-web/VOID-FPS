@@ -51,6 +51,8 @@ TARGET_SIMPLE_NAMES = [
 EXACT_CLASSES = {
     "Block": "net/minecraft/world/level/block/Block.class",
     "BlockBehaviour": "net/minecraft/world/level/block/state/BlockBehaviour.class",
+    "BakedQuad": "net/minecraft/client/resources/model/geometry/BakedQuad.class",
+    "BlockQuadOutput": "net/minecraft/client/renderer/block/BlockQuadOutput.class",
 }
 
 # Lines in javap output that are worth highlighting in summary.md.
