@@ -1,6 +1,6 @@
 # Minecraft 26.3 vanilla block-rendering pipeline
 
-Inspection source: GitHub Actions artifacts from runs 41822072496, 41827531435, and 41828229080, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
+Inspection source: GitHub Actions artifacts from runs 41822072496, 41827531435, 41828229080, and 41828660351, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
 
 ## Verified call flow
 
@@ -32,13 +32,17 @@ The AO path delegates per-quad preparation to `BlockModelLighter.prepareQuadAmbi
 
 The flat path obtains packed light through `BlockModelLighter.getLightCoords` at the neighbour position for directional quads, then calls `prepareQuadFlat(...)` for each quad. Unculled quads use the flat helper's sentinel light argument.
 
-The current project-side `SurfaceLighting` implementation is explicitly an approximation and has not been proven equivalent to 26.3. It must not be used to replace vanilla AO/flat preparation until its output is compared against the native lighter over a test matrix.
+The current project-side `SurfaceLighting` implementation is explicitly an approximation and has not been proven equivalent to 26.3. It must not be used to replace vanilla AO/flat preparation.
 
-### Native lighter reuse confirmed by bytecode inspection
+### Native lighter reuse and cache lifecycle confirmed by bytecode inspection
 
-The 26.3 `BlockModelLighter` class has a public constructor and public methods for `getLightCoords`, `prepareQuadAmbientOcclusion`, and `prepareQuadFlat`. The flat method accepts the world, state, block position, packed-light argument, baked quad, and target `QuadInstance`. This means VOID FPS can construct its own native lighter and delegate preparation to Minecraft's implementation instead of reproducing its lighting calculations.
+The 26.3 `BlockModelLighter` class has a public constructor and public methods for `getLightCoords`, `prepareQuadAmbientOcclusion`, and `prepareQuadFlat`. It also exposes static `enableCaching()` and `clearCache()` methods.
 
-Vanilla's `ModelBlockRenderer` owns a private lighter instance, so the project cannot simply read that field through the public API. Creating a separate lighter is a viable API-level route, but its cache lifecycle, thread assumptions, and output equivalence still require runtime verification. Keep the custom path disabled until that verification is complete. The bytecode confirms method visibility and call shape, not that an independently owned lighter behaves identically in every rendering context.
+The `SectionCompiler.compile` bytecode calls `BlockModelLighter.enableCaching()` near the start of section compilation and `BlockModelLighter.clearCache()` on its normal completion path. The constructor obtains the cache from the same static `ThreadLocal`. Thus, a separately constructed lighter on that same worker thread shares the native cache; it does not create a separate cache. The lighter instance itself also owns mutable scratch-position and face-shape state, so an instance must be thread-confined and must not be shared between concurrent section-compilation threads.
+
+VOID FPS now has a thin, currently unused `NativeLightingAdapter` that delegates AO, flat preparation, and packed-light lookup to these native methods. It deliberately does not call `enableCaching()` or `clearCache()`; the enclosing vanilla section-compilation lifecycle owns those calls. It is not wired into a renderer and does not activate an optimization.
+
+This establishes a source-level integration route, not runtime parity. The adapter must only be used inside the same valid section-compilation cache scope, and output still needs comparison against vanilla in a running 26.3 client.
 
 ## Tint and output
 
