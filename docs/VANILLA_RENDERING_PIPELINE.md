@@ -1,6 +1,6 @@
 # Minecraft 26.3 vanilla block-rendering pipeline
 
-Inspection source: GitHub Actions artifact from run 41822072496, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
+Inspection source: GitHub Actions artifacts from runs 41822072496, 41827531435, and 41828229080, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
 
 ## Verified call flow
 
@@ -32,7 +32,13 @@ The AO path delegates per-quad preparation to `BlockModelLighter.prepareQuadAmbi
 
 The flat path obtains packed light through `BlockModelLighter.getLightCoords` at the neighbour position for directional quads, then calls `prepareQuadFlat(...)` for each quad. Unculled quads use the flat helper's sentinel light argument.
 
-The current project-side `SurfaceLighting` implementation is explicitly an approximation and has not been proven equivalent to 26.3. It must not be used to replace vanilla AO/flat preparation until its output is compared against the native lighter over a test matrix. Prefer delegating to the native lighter where possible.
+The current project-side `SurfaceLighting` implementation is explicitly an approximation and has not been proven equivalent to 26.3. It must not be used to replace vanilla AO/flat preparation until its output is compared against the native lighter over a test matrix.
+
+### Native lighter reuse confirmed by bytecode inspection
+
+The 26.3 `BlockModelLighter` class has a public constructor and public methods for `getLightCoords`, `prepareQuadAmbientOcclusion`, and `prepareQuadFlat`. The flat method accepts the world, state, block position, packed-light argument, baked quad, and target `QuadInstance`. This means VOID FPS can construct its own native lighter and delegate preparation to Minecraft's implementation instead of reproducing its lighting calculations.
+
+Vanilla's `ModelBlockRenderer` owns a private lighter instance, so the project cannot simply read that field through the public API. Creating a separate lighter is a viable API-level route, but its cache lifecycle, thread assumptions, and output equivalence still require runtime verification. Keep the custom path disabled until that verification is complete. The bytecode confirms method visibility and call shape, not that an independently owned lighter behaves identically in every rendering context.
 
 ## Tint and output
 
@@ -62,7 +68,7 @@ Before intercepting vanilla rendering, the integration must:
 1. Add and verify the actual 26.3 mixin configuration/dependency and confirm the exact target at runtime.
 2. Build a native-model adapter that preserves model random seeding, all collected parts, directional and unculled quads, model offsets, material layer, packed UVs, and quad material flags.
 3. Reuse vanilla neighbour-face culling semantics; do not add a duplicate face-visibility cache.
-4. Reuse or exactly reproduce native flat/AO preparation and tint-source resolution. The current standalone lighting approximation is not sufficient.
+4. Reuse the native lighter and native tint-source resolution where possible. The current standalone lighting approximation is not sufficient.
 5. Restrict interception to a narrow, positively verified subset. Every unsupported model/state must return to vanilla without partial emission or duplicate rendering.
 6. Compare generated per-vertex output with vanilla in a runtime Minecraft 26.3 test before enabling the path by default.
 
