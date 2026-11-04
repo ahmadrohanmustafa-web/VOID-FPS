@@ -292,12 +292,39 @@ public final class SelfTest {
                 SurfaceLighting.blend((4 << 16) | 0, (8 << 16) | 4, (12 << 16) | 8, (0 << 16) | 12) == ((6 << 16) | 6));
     }
 
+
+    static void nativeVertexComparison() {
+        NativeVertexRecord a = new NativeVertexRecord(
+                1, 2, 3, 0xFFFFFFFF, 0.25f, 0.75f, 4, 5, 0, 1, 0);
+        NativeVertexRecord b = new NativeVertexRecord(
+                1, 2, 3, 0xFFFFFFFF, 0.25f, 0.75f, 4, 5, 0, 1, 0);
+        NativeVertexRecord close = new NativeVertexRecord(
+                1.00001f, 2, 3, 0xFFFFFFFF, 0.25f, 0.75f, 4, 5, 0, 1, 0);
+        NativeVertexRecord wrongColor = new NativeVertexRecord(
+                1, 2, 3, 0xFFFEFFFF, 0.25f, 0.75f, 4, 5, 0, 1, 0);
+
+        check("native vertex exact records match",
+                NativeVertexParity.compare(List.of(a), List.of(b), 0).matches());
+        check("native vertex float tolerance applies only to floats",
+                NativeVertexParity.compare(List.of(a), List.of(close), 0.00002f).matches());
+        check("native packed colour mismatch is detected",
+                !NativeVertexParity.compare(List.of(a), List.of(wrongColor), 0.00002f).matches());
+        check("native vertex order/count mismatch is detected",
+                !NativeVertexParity.compare(List.of(a, b), List.of(b), 0).matches());
+        check("native vertex NaN is rejected",
+                !NativeVertexParity.compare(
+                        List.of(new NativeVertexRecord(Float.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+                        List.of(new NativeVertexRecord(Float.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+                        0).matches());
+    }
+
     public static void main(String[] args) {
         eligibility();
         culling();
         geometryAndUvs();
         flatLighting();
         ambientOcclusion();
+        nativeVertexComparison();
         System.out.println(checks + " checks, " + failures + " failures");
         System.exit(failures == 0 ? 0 : 1);
     }
