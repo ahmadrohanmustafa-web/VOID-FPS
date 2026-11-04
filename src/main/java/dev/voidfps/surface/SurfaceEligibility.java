@@ -18,6 +18,25 @@ public final class SurfaceEligibility {
         }
     }
 
+    /**
+     * Native-model geometry gate. This deliberately stops before material or rendering
+     * eligibility: Minecraft's native MaterialInfo/layer/tint semantics must be checked by
+     * a later adapter before a custom output path can be considered.
+     */
+    public record NativeGeometryAnalysis(boolean supported, String rejectReason) {
+    }
+
+    public static NativeGeometryAnalysis analyzeNativeGeometry(NativeModelSnapshot.Snapshot snapshot) {
+        if (snapshot == null || snapshot.isEmpty()) {
+            return new NativeGeometryAnalysis(false, "native model has no selected parts");
+        }
+        if (!snapshot.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            return new NativeGeometryAnalysis(false,
+                    "native model is not exactly one unit boundary quad per face");
+        }
+        return new NativeGeometryAnalysis(true, null);
+    }
+
     public static Analysis analyze(ModelInfo info) {
         if (!info.opaqueFullCube()) return reject("not an opaque full cube");
         if (info.hasBlockEntityRenderer()) return reject("block entity / custom renderer");
