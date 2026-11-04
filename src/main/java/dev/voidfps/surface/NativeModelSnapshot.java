@@ -132,5 +132,36 @@ public final class NativeModelSnapshot {
             return Math.abs(value) <= GEOMETRY_EPSILON
                     || Math.abs(value - 1.0f) <= GEOMETRY_EPSILON;
         }
+
+        /**
+         * Checks the native per-quad material metadata for the narrow first milestone:
+         * solid chunk layer, no tint, no per-quad light emission, no animated texture,
+         * and no shade-direction override. This does not prove block opacity or block
+         * emission; those remain separate state/world checks.
+         */
+        public boolean hasOnlyPlainSolidUntintedMaterials() {
+            if (parts.isEmpty()) return false;
+
+            for (Part part : parts) {
+                for (FaceQuads face : part.directionalQuads()) {
+                    for (BakedQuad quad : face.quads()) {
+                        if (!hasPlainSolidMaterial(quad)) return false;
+                    }
+                }
+                for (BakedQuad quad : part.unculledQuads()) {
+                    if (!hasPlainSolidMaterial(quad)) return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean hasPlainSolidMaterial(BakedQuad quad) {
+            var material = quad.materialInfo();
+            return material.layer() == net.minecraft.client.renderer.chunk.ChunkSectionLayer.SOLID
+                    && material.tintIndex() < 0
+                    && material.lightEmission() == 0
+                    && material.shadeDirectionOverride() == null
+                    && (material.flags() & BakedQuad.FLAG_ANIMATED) == 0;
+        }
     }
 }
