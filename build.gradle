@@ -42,6 +42,14 @@ tasks.register('selfTest', JavaExec) {
     mainClass = 'dev.voidfps.surface.SelfTest'
 }
 
+// The project currently uses a standalone main-based self-test suite rather
+// than JUnit. Gradle's default test task sees test sources but discovers no
+// framework tests; don't fail the build for that. The selfTest task above
+// executes the actual 29-check suite and remains part of "check".
+test {
+    failOnNoDiscoveredTests = false
+}
+
 check.dependsOn selfTest
 
 tasks.withType(JavaCompile).configureEach {
