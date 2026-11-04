@@ -40,6 +40,33 @@ jobs:
           if [ -z "$MC_JAR" ]; then echo "Minecraft client jar not found"; exit 0; fi
           javap -p -classpath "$MC_JAR" com.mojang.blaze3d.vertex.QuadInstance com.mojang.blaze3d.vertex.VertexConsumer > build/void-fps-inspect/vertex-output.bytecode.txt
 
+
+      - name: Dump vanilla block rendering bytecode
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p build/void-fps-inspect/vanilla-bytecode
+          MC_JAR="$(find "$HOME/.gradle/caches/fabric-loom" -name 'minecraft-client.jar' -print -quit)"
+          if [ -z "$MC_JAR" ]; then echo "Minecraft client jar not found"; exit 0; fi
+          classes=(
+            net.minecraft.client.renderer.block.ModelBlockRenderer
+            net.minecraft.client.renderer.block.BlockModelLighter
+            net.minecraft.client.renderer.block.BlockQuadOutput
+            net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
+            net.minecraft.client.renderer.block.dispatch.BlockStateModel
+            net.minecraft.client.resources.model.geometry.BakedQuad
+            net.minecraft.client.resources.model.geometry.BakedQuad\$MaterialInfo
+            net.minecraft.client.renderer.block.BlockAndTintGetter
+            net.minecraft.client.renderer.chunk.RenderSectionRegion
+            net.minecraft.client.renderer.chunk.SectionCompiler
+          )
+          for class in "${classes[@]}"; do
+            file="build/void-fps-inspect/vanilla-bytecode/${class##*.}.bytecode.txt"
+            echo "===== $class =====" > "$file"
+            javap -c -p -classpath "$MC_JAR" "$class" >> "$file" 2>&1 || true
+          done
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
