@@ -44,6 +44,9 @@ public final class SurfaceEligibility {
         if (!state.canOcclude()) {
             return new NativeGeometryAnalysis(false, "block state cannot occlude neighbouring faces");
         }
+        if (state.hasOffsetFunction()) {
+            return new NativeGeometryAnalysis(false, "block state has a position-dependent model offset");
+        }
         if (state.getLightEmission() != 0) {
             return new NativeGeometryAnalysis(false, "block state emits light");
         }
