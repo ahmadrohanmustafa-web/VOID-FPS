@@ -309,8 +309,14 @@ public final class SelfTest {
                 NativeVertexParity.compare(List.of(a), List.of(close), 0.00002f).matches());
         check("native packed colour mismatch is detected",
                 !NativeVertexParity.compare(List.of(a), List.of(wrongColor), 0.00002f).matches());
-        check("native vertex order/count mismatch is detected",
+        check("native vertex count mismatch is detected",
                 !NativeVertexParity.compare(List.of(a, b), List.of(b), 0).matches());
+        check("native vertex order mismatch is detected at equal count",
+                !NativeVertexParity.compare(List.of(a, b), List.of(b, a), 0).matches());
+        check("native vertex null capture is rejected",
+                !NativeVertexParity.compare(null, List.of(a), 0).matches());
+        check("native vertex invalid tolerance is rejected",
+                !NativeVertexParity.compare(List.of(a), List.of(a), Float.NaN).matches());
         check("native vertex NaN is rejected",
                 !NativeVertexParity.compare(
                         List.of(new NativeVertexRecord(Float.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
