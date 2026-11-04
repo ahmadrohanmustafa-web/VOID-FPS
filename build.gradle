@@ -16,7 +16,9 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    // Minecraft 26.1+ is unobfuscated and Loom's non-remapping plugin uses
+    // normal Gradle configurations instead of the legacy modImplementation.
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
 }
 
 java {
