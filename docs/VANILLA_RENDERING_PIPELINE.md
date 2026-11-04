@@ -42,6 +42,17 @@ Finally, `BlockQuadOutput.put(x, y, z, quad, quadInstance)` receives the baked q
 
 The native output path therefore carries baked vertex positions, packed UVs, material information, tint, and per-vertex light/colour state. A replacement must not flatten or discard those values.
 
+## 26.3 face-occlusion and model-offset bytecode findings
+
+The follow-up inspection artifact from workflow run 41827531435 confirms these details:
+
+- `ModelBlockRenderer.tesselateBlock` calls `state.getOffset(blockPos)` after collecting model parts and before emitting geometry. `BlockStateBase.getOffset` returns `Vec3.ZERO` only when its offset function is absent; otherwise it evaluates that function with the state and position. VOID FPS therefore conservatively rejects states for which `hasOffsetFunction()` is true rather than silently dropping a positional transform.
+- `ModelBlockRenderer.shouldRenderFace` obtains the neighbour state and delegates directly to `Block.shouldRenderFace(state, neighbour, direction)` when culling is enabled.
+- `Block.shouldRenderFace` checks the neighbour's opposite face-occlusion shape against the singleton `Shapes.block()` first, then calls the current state's `skipRendering(neighbour, direction)`. Empty-shape fast paths follow; the remaining shape-pair calculation uses Minecraft's thread-local occlusion cache.
+- `BlockStateBase.getFaceOcclusionShape(direction)` returns a precomputed per-direction shape. `canOcclude()` alone is not proof that all six faces are full-block occlusion faces. The native eligibility gate now requires identity with `Shapes.block()` on all six directions as a conservative candidate filter.
+
+The eligibility check is not a replacement for runtime culling: an eventual renderer must still call vanilla's `Block.shouldRenderFace` for each relevant neighbour test and must preserve vanilla's culling configuration. Do not build a second face-visibility cache.
+
 ## VOID FPS implementation gates
 
 The current project has no active mixin: `void_fps_surface.mixins.json` has empty arrays and is not registered in `fabric.mod.json`. The client entrypoint intentionally logs that no optimization is active.
