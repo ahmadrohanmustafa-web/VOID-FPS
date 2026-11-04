@@ -50,6 +50,10 @@ TARGET_SIMPLE_NAMES = [
     "BlockEntityRenderer",
     "BlockEntity",
     "BlockEntityType",
+    "Shapes",
+    "VoxelShape",
+    "BlockPos",
+    "Vec3",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -62,6 +66,10 @@ EXACT_CLASSES = {
     "BlockEntityRenderer": "net/minecraft/client/renderer/blockentity/BlockEntityRenderer.class",
     "BlockEntity": "net/minecraft/world/level/block/entity/BlockEntity.class",
     "BlockEntityType": "net/minecraft/world/level/block/entity/BlockEntityType.class",
+    "Shapes": "net/minecraft/world/phys/shapes/Shapes.class",
+    "VoxelShape": "net/minecraft/world/phys/shapes/VoxelShape.class",
+    "BlockPos": "net/minecraft/core/BlockPos.class",
+    "Vec3": "net/minecraft/world/phys/Vec3.class",
 }
 
 # Lines in javap output that are worth highlighting in summary.md.
@@ -69,13 +77,14 @@ KEYWORDS = re.compile(
     r"tesselate|tessellate|shouldRenderFace|isFaceOccluded|skipRendering|compile|"
     r"getLightCoords|getShade|renderModel|addFace|cull|occlu|isSolidRender|"
     r"getFaceOcclusionShape|isCollisionShapeFullBlock|useShapeForLightOcclusion|"
-    r"canOcclude|getVisualShape|getOcclusionShape|Cache|getRenderer|blockentity|blockEntity",
+    r"canOcclude|getVisualShape|getOcclusionShape|hasOffsetFunction|getOffset|offset|Cache|getRenderer|blockentity|blockEntity",
     re.IGNORECASE,
 )
 
 BYTECODE_CLASSES = [
     "ModelBlockRenderer", "SectionCompiler", "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
-    "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType"
+    "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
+    "Shapes", "VoxelShape", "BlockPos", "Vec3"
 ]
 
 
