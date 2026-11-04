@@ -30,6 +30,9 @@ from pathlib import Path
 TARGET_SIMPLE_NAMES = [
     "ModelBlockRenderer",
     "SectionCompiler",
+    "BlockQuadOutput",
+    "BlockStateModelPart",
+    "BlockModelLighter",
     "RenderSectionRegion",
     "SectionCopy",
     "FluidRenderer",
