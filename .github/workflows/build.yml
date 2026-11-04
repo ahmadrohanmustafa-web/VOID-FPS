@@ -38,7 +38,7 @@ jobs:
           mkdir -p build/void-fps-inspect
           MC_JAR="$(find "$HOME/.gradle/caches/fabric-loom" -name 'minecraft-client.jar' -print -quit)"
           if [ -z "$MC_JAR" ]; then echo "Minecraft client jar not found"; exit 0; fi
-          javap -p -classpath "$MC_JAR" com.mojang.blaze3d.vertex.QuadInstance com.mojang.blaze3d.vertex.VertexConsumer > build/void-fps-inspect/vertex-output.bytecode.txt
+          javap -c -p -classpath "$MC_JAR" com.mojang.blaze3d.vertex.QuadInstance com.mojang.blaze3d.vertex.VertexConsumer > build/void-fps-inspect/vertex-output.bytecode.txt
 
 
       - name: Dump vanilla block rendering bytecode
