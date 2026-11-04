@@ -42,6 +42,8 @@ TARGET_SIMPLE_NAMES = [
     "BakedQuad",
     "ChunkSectionLayer",
     "BlockAndTintGetter",
+    "BlockColors",
+    "BlockTintSource",
     "Block",
     "BlockBehaviour",
     "BlockStateBase",
@@ -62,6 +64,8 @@ EXACT_CLASSES = {
     "BlockBehaviour": "net/minecraft/world/level/block/state/BlockBehaviour.class",
     "BakedQuad": "net/minecraft/client/resources/model/geometry/BakedQuad.class",
     "BlockQuadOutput": "net/minecraft/client/renderer/block/BlockQuadOutput.class",
+    "BlockColors": "net/minecraft/client/color/block/BlockColors.class",
+    "BlockTintSource": "net/minecraft/client/color/block/BlockTintSource.class",
     "BlockEntityRenderDispatcher": "net/minecraft/client/renderer/blockentity/BlockEntityRenderDispatcher.class",
     "BlockEntityRenderer": "net/minecraft/client/renderer/blockentity/BlockEntityRenderer.class",
     "BlockEntity": "net/minecraft/world/level/block/entity/BlockEntity.class",
@@ -74,7 +78,7 @@ EXACT_CLASSES = {
 
 # Lines in javap output that are worth highlighting in summary.md.
 KEYWORDS = re.compile(
-    r"tesselate|tessellate|shouldRenderFace|isFaceOccluded|skipRendering|compile|"
+    r"tesselate|tessellate|shouldRenderFace|isFaceOccluded|skipRendering|compile|tint|colorInWorld|"
     r"getLightCoords|getShade|renderModel|addFace|cull|occlu|isSolidRender|"
     r"getFaceOcclusionShape|isCollisionShapeFullBlock|useShapeForLightOcclusion|"
     r"canOcclude|getVisualShape|getOcclusionShape|hasOffsetFunction|getOffset|offset|Cache|getRenderer|blockentity|blockEntity",
@@ -83,7 +87,7 @@ KEYWORDS = re.compile(
 
 BYTECODE_CLASSES = [
     "ModelBlockRenderer", "SectionCompiler", "BlockModelLighter", "BlockQuadOutput",
-    "BlockStateModelPart", "BlockStateModel", "BlockAndTintGetter",
+    "BlockStateModelPart", "BlockStateModel", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
     "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
     "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
     "Shapes", "VoxelShape", "BlockPos", "Vec3"
