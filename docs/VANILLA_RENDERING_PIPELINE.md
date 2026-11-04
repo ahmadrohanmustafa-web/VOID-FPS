@@ -46,11 +46,13 @@ This establishes a source-level integration route, not runtime parity. The adapt
 
 ## Tint and output
 
-For each quad, vanilla reads `quad.materialInfo().tintIndex()`. If the tint index is not -1, it resolves the registered tint source for the current block state/world/position and applies it with `QuadInstance.multiplyColor(color)`. Tint source results are cached during the block render and the tint cache is reset afterwards.
+For each quad, vanilla reads `quad.materialInfo().tintIndex()`. If the tint index is not -1, it resolves the registered tint source for the current block state/world/position and applies it with `QuadInstance.multiplyColor(color)`. `ModelBlockRenderer` obtains the ordered tint-source list from `BlockColors.getTintSources(state)`. It computes a source with `BlockTintSource.colorInWorld(state, world, pos)`, caches computed values by tint index, and uses -1 when the requested tint index is outside the source list. Its tint cache is reset after each block render, including exceptional exits. This is state- and world-position-dependent behavior; a constant colour substitution is not equivalent.
 
-Finally, `BlockQuadOutput.put(x, y, z, quad, quadInstance)` receives the baked quad and prepared instance. In `SectionCompiler`, one output lambda writes to the SOLID layer; the other selects the layer from `quad.materialInfo().layer()`. Both call `BufferBuilder.putBlockBakedQuad(...)`.
+The first VOID FPS candidate gate rejects every tinted quad (`tintIndex() < 0` is required). This keeps tint out of the first narrow milestone rather than pretending tint is already implemented. Any later expansion to tinted blocks must preserve the native source lookup, per-position colour computation, multiplication into all four vertex colours, and cache lifetime. Prefer a verified native route over a second independently designed tint cache.
 
-The native output path therefore carries baked vertex positions, packed UVs, material information, tint, and per-vertex light/colour state. A replacement must not flatten or discard those values.
+Finally, `BlockQuadOutput.put(x, y, z, quad, quadInstance)` receives the original baked quad and prepared instance. The interface has one method and leaves the destination consumer to the caller. In `SectionCompiler`, one output lambda writes to the SOLID layer; the other selects the layer from `quad.materialInfo().layer()`. Both call `VertexConsumer.putBlockBakedQuad(...)` on the selected layer's buffer.
+
+The native output path therefore carries baked vertex positions, packed UVs, material information, tint, and per-vertex light/colour state. A replacement must preserve the original quad and prepared instance through the same native output contract; rebuilding simplified vertices risks losing material flags, UV packing, and per-vertex attributes.
 
 ## 26.3 face-occlusion and model-offset bytecode findings
 
