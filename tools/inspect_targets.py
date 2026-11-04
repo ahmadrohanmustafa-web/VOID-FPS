@@ -82,7 +82,9 @@ KEYWORDS = re.compile(
 )
 
 BYTECODE_CLASSES = [
-    "ModelBlockRenderer", "SectionCompiler", "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
+    "ModelBlockRenderer", "SectionCompiler", "BlockModelLighter", "BlockQuadOutput",
+    "BlockStateModelPart", "BlockStateModel", "BlockAndTintGetter",
+    "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
     "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
     "Shapes", "VoxelShape", "BlockPos", "Vec3"
 ]
