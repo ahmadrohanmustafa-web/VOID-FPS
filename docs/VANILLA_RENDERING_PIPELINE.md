@@ -1,6 +1,6 @@
 # Minecraft 26.3 vanilla block-rendering pipeline
 
-Inspection source: GitHub Actions artifacts from runs 41822072496, 41827531435, 41828229080, and 41828660351, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
+Inspection source: GitHub Actions artifacts from runs 41822072496, 41827531435, 41828229080, 41828660351, 41829572824, and 41830020628, built against the Minecraft 26.3 client jar. The findings below are based on bytecode inspection; they are not a runtime equivalence test.
 
 ## Verified call flow
 
@@ -52,7 +52,9 @@ The first VOID FPS candidate gate rejects every tinted quad (`tintIndex() < 0` i
 
 Finally, `BlockQuadOutput.put(x, y, z, quad, quadInstance)` receives the original baked quad and prepared instance. The interface has one method and leaves the destination consumer to the caller. In `SectionCompiler`, one output lambda writes to the SOLID layer; the other selects the layer from `quad.materialInfo().layer()`. Both call `VertexConsumer.putBlockBakedQuad(...)` on the selected layer's buffer.
 
-The native output path therefore carries baked vertex positions, packed UVs, material information, tint, and per-vertex light/colour state. A replacement must preserve the original quad and prepared instance through the same native output contract; rebuilding simplified vertices risks losing material flags, UV packing, and per-vertex attributes.
+The bytecode for `VertexConsumer.putBlockBakedQuad` verifies the exact block-vertex emission contract. It loops over all four vertices and, for each one, reads the original `BakedQuad.position(i)` and `packedUV(i)`, the prepared `QuadInstance.getColor(i)` and `getLightCoordsWithEmission(i, materialInfo.lightEmission())`, and the shared overlay coordinates. It adds the block origin `(x, y, z)` to the original vertex position, unpacks the original packed U/V pair, and calls the consumer's packed `addVertex` overload with position, colour, UV, overlay, light, and the baked quad direction's unit vector as the normal. This block-specific method does not independently resolve tint: tint multiplication has already been applied to the `QuadInstance` by `ModelBlockRenderer` before the output callback.
+
+For the first candidate subset, which excludes tinted quads and non-solid/material-special cases, a custom route must preserve this same order and data exactly. Keep the original baked quad and prepared instance intact until output; do not reconstruct positions, UVs, colours, light, overlay, or normals from a simplified cube description. Layer selection remains the responsibility of the `SectionCompiler` output route.
 
 ## 26.3 face-occlusion and model-offset bytecode findings
 
