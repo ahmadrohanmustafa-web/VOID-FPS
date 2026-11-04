@@ -45,6 +45,7 @@ TARGET_SIMPLE_NAMES = [
     "Block",
     "BlockBehaviour",
     "BlockStateBase",
+    "BlockState",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -64,7 +65,9 @@ KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-BYTECODE_CLASSES = ["ModelBlockRenderer", "SectionCompiler", "Block", "BlockStateBase"]
+BYTECODE_CLASSES = [
+    "ModelBlockRenderer", "SectionCompiler", "Block", "BlockBehaviour", "BlockStateBase", "BlockState"
+]
 
 
 def default_search_roots() -> list[Path]:
