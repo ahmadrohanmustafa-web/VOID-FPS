@@ -26,9 +26,18 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 new Vector3f(1.0f, 1.0f, 0.0f),
                 new Vector3f(0.0f, 1.0f, 0.0f)
         };
+        float[][] uvs = {
+                {0.125f, 0.25f},
+                {0.375f, 0.50f},
+                {0.625f, 0.75f},
+                {0.875f, 1.00f}
+        };
         BakedQuad quad = new BakedQuad(
                 positions[0], positions[1], positions[2], positions[3],
-                0L, 0L, 0L, 0L,
+                packUv(uvs[0][0], uvs[0][1]),
+                packUv(uvs[1][0], uvs[1][1]),
+                packUv(uvs[2][0], uvs[2][1]),
+                packUv(uvs[3][0], uvs[3][1]),
                 Direction.SOUTH,
                 new MaterialInfo(null, null, null, null, null, -1, null, 0));
 
@@ -46,7 +55,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                     positions[i].x() + 10.0f,
                     positions[i].y() - 2.0f,
                     positions[i].z() + 5.0f,
-                    colors[i], 0.0f, 0.0f, overlay, lights[i],
+                    colors[i], uvs[i][0], uvs[i][1], overlay, lights[i],
                     0.0f, 0.0f, 1.0f));
         }
 
@@ -66,5 +75,10 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         }
 
         System.out.println("VOID FPS native putBlockBakedQuad test passed");
+    }
+
+    private static long packUv(float u, float v) {
+        return (long) Float.floatToRawIntBits(u) << 32
+                | Float.floatToRawIntBits(v) & 0xFFFFFFFFL;
     }
 }
