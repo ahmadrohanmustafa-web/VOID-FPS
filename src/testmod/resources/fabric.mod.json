@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "voidfps-test",
+  "version": "1.0.0",
+  "name": "VOID FPS Test Harness",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.voidfps.surface.NativeRecorderTestEntrypoint"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  }
+}
