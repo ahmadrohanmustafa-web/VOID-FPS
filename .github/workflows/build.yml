@@ -70,6 +70,8 @@ jobs:
           MC_JAR="$(find "$HOME/.gradle/caches/fabric-loom" -name 'minecraft-client.jar' -print -quit)"
           if [ -z "$MC_JAR" ]; then echo "Minecraft client jar not found"; exit 0; fi
           classes=(
+            net.minecraft.client.Minecraft
+            net.minecraft.client.resources.model.ModelManager
             net.minecraft.client.renderer.block.ModelBlockRenderer
             net.minecraft.client.renderer.block.BlockModelLighter
             net.minecraft.client.renderer.block.BlockQuadOutput
