@@ -37,14 +37,10 @@ jobs:
           status=$?
           set -e
           cat build/void-fps-client-smoke.log
-          if grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log \
-            && grep -q "VOID FPS native putBlockBakedQuad UV and emission test passed" build/void-fps-client-smoke.log \\
-            && grep -q "VOID FPS resource-loaded stone model snapshot passed" build/void-fps-client-smoke.log; then
-            echo "Minecraft client loaded VOID FPS and passed native vertex-output and resource-loaded block-model checks."
-          else
-            echo "Minecraft client did not reach the VOID FPS client entrypoint (exit $status)."
-            exit 1
-          fi
+          grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log
+          grep -q "VOID FPS native putBlockBakedQuad UV and emission test passed" build/void-fps-client-smoke.log
+          grep -q "VOID FPS resource-loaded stone model snapshot passed" build/void-fps-client-smoke.log
+          echo "Minecraft client loaded VOID FPS and passed native vertex-output and resource-loaded block-model checks."
 
       - name: Dump Minecraft 26.3 target signatures
         if: always()
