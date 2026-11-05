@@ -25,6 +25,25 @@ jobs:
       - name: Build
         run: gradle build --no-daemon
 
+      - name: Launch Minecraft 26.3 test client (startup smoke test)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          set +e
+          timeout 180s xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
+            env LIBGL_ALWAYS_SOFTWARE=1 gradle runTestClient --no-daemon \
+            > build/void-fps-client-smoke.log 2>&1
+          status=$?
+          set -e
+          cat build/void-fps-client-smoke.log
+          if grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log; then
+            echo "Minecraft client reached the VOID FPS client entrypoint."
+          else
+            echo "Minecraft client did not reach the VOID FPS client entrypoint (exit $status)."
+            exit 1
+          fi
+
       - name: Dump Minecraft 26.3 target signatures
         if: always()
         continue-on-error: true
