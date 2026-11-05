@@ -113,3 +113,12 @@ Run the new native `putBlockBakedQuad` fixture through CI and fix any constructo
 - The release JAR remains separate from the test harness; test-only entrypoint and metadata are not part of the shipped mod.
 - The next fixture now assigns material light emission 7 and checks that Minecraft's own `QuadInstance.getLightCoordsWithEmission(...)` changes each packed light value before comparing the actual `putBlockBakedQuad` output. CI will also dump the `LightCoordsUtil` and `UVPair` bytecode for inspection.
 - Renderer interception remains disabled. No FPS improvement is claimed.
+
+## Material emission verification (2026-11-05)
+
+- GitHub Actions run `42028157731` (commit `190c4dffb80c33b2840a9e11356c670aa8a7fd24`) passed the Minecraft 26.3 client test. Its runtime log contains `VOID FPS native putBlockBakedQuad UV and emission test passed`.
+- The fixture sets `BakedQuad.MaterialInfo.lightEmission` to 7. The four base packed light values have block and sky channels below 7, so Minecraft's `LightCoordsUtil.lightCoordsWithEmission` raises both channels to 7, yielding `0x00700070` for each vertex.
+- The uploaded run artifact's `javap` output confirms the helper's implementation: emission is applied to both unpacked sky and block channels using `Math.max`, then repacked. The test also confirms the non-zero UVs remain correct through the same native output call.
+- Run `42028150859` failed only because it used an older workflow revision that still searched for the previous success-marker text. Its client log actually contains the new UV-and-emission success marker. The subsequent run `42028157731`, with the updated workflow check, passed. This was a workflow revision race, not an emission-test failure.
+- A follow-up fixture now checks the expected emitted packed value explicitly (`0x00700070`) before comparing the recorded vertices. This avoids relying solely on the same helper to generate the expected result.
+- This remains a synthetic quad/output-boundary test. It does not yet validate native world lighting preparation, ambient occlusion, actual loaded block models, or vanilla-versus-candidate parity.
