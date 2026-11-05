@@ -89,3 +89,16 @@ A client-start smoke test is only infrastructure validation. It is **not** verte
 - The CI startup smoke log is now included in the `void-fps-build` artifact for future diagnosis.
 - The `NativeVertexRecorder` compiles as test code, but its packed-call exercise is not currently run by the standalone self-test because loading `VertexConsumer` there requires Loom's Minecraft runtime. No native vanilla/candidate vertex capture has yet run; startup success does not establish rendering parity.
 - Renderer interception remains disabled.
+
+
+## Latest CI verification (2026-11-05, run 42024280099)
+
+- Commit `2657e08d5ef3cf9ad790e0946f574b75d4a6ef61` passed the Gradle build and Minecraft 26.3 client startup smoke test.
+- The test-only client entrypoint ran and logged `VOID FPS native recorder test passed`.
+- The current recorder exercise manually invokes the packed 11-argument `VertexConsumer.addVertex(...)` default method and checks record capture plus clearing. It does **not** yet call `VertexConsumer.putBlockBakedQuad(...)`, construct a native baked quad, invoke vanilla model collection, or compare vanilla output against a candidate adapter.
+- The headless Xvfb log includes OpenGL/Vulkan backend creation warnings after the required checks. Treat this as a CI graphics-backend limitation, not proof of successful rendered gameplay.
+- The uploaded release JAR was inspected: it contains neither `NativeRecorderTestEntrypoint` nor the `voidfps-test` mod metadata. Test-only classes remain excluded from the shipped artifact.
+
+### Immediate next implementation target
+
+Upgrade the test-only runtime exercise from a manual packed-call test to a direct invocation of the native `VertexConsumer.putBlockBakedQuad(x, y, z, bakedQuad, quadInstance)` default method using a deliberately constructed, deterministic native `BakedQuad` and `QuadInstance`. First verify the exact 26.3 constructors and UV packing representation in the downloaded runtime bytecode, then assert all four emitted records including translated positions, UVs, material light emission, overlay, and face normal. This remains a narrow API-path test; it must not be described as real block-model or vanilla/candidate parity. Keep production rendering disabled.
