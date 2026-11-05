@@ -44,6 +44,20 @@ tasks.register('selfTest', JavaExec) {
     mainClass = 'dev.voidfps.surface.SelfTest'
 }
 
+// A separate test mod loads only in the dedicated test-client run. It reuses
+// compiled test fixtures without adding any test code to the released mod.
+sourceSets {
+    testmod {
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+    }
+}
+
+configurations {
+    testmodImplementation.extendsFrom testImplementation
+    testmodRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 // The project currently uses a standalone main-based self-test suite rather
 // than JUnit. Gradle's default test task sees test sources but discovers no
 // framework tests; don't fail the build for that. The selfTest task above
@@ -62,11 +76,19 @@ tasks.withType(JavaCompile).configureEach {
 // A separate development-client run configuration adds test classes to the
 // runtime classpath without putting anything from src/test into the shipped JAR.
 loom {
+    mods {
+        "voidfps" {
+            sourceSet sourceSets.main
+        }
+        "voidfps-test" {
+            sourceSet sourceSets.testmod
+        }
+    }
     runs {
         testClient {
             inherit client
             displayName = "VOID FPS Test Client"
-            sourceSet = sourceSets.test.name
+            sourceSet = sourceSets.testmod.name
             runDirectory = file("run/test-client")
         }
     }
