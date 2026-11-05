@@ -48,8 +48,8 @@ tasks.register('selfTest', JavaExec) {
 // compiled test fixtures without adding any test code to the released mod.
 sourceSets {
     testmod {
-        compileClasspath += sourceSets.main.output + sourceSets.test.output
-        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+        compileClasspath += sourceSets.main.output + sourceSets.test.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output + sourceSets.main.runtimeClasspath
     }
 }
 
