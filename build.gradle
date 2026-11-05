@@ -36,12 +36,22 @@ processResources {
     }
 }
 
+// Loom's `minecraft` configuration is a dependency bucket and cannot
+// be resolved directly. Give the standalone self-test a resolvable view of it.
+configurations {
+    selfTestMinecraftRuntime {
+        canBeResolved = true
+        canBeConsumed = false
+        extendsFrom minecraft
+    }
+}
+
 tasks.register('selfTest', JavaExec) {
     dependsOn classes, testClasses
     // Include Loom's resolved Minecraft runtime as well as the normal test
     // runtime. The recorder implements Minecraft's VertexConsumer interface,
     // so output-only classpaths fail when the self-test instantiates it.
-    classpath = sourceSets.test.runtimeClasspath + configurations.minecraft
+    classpath = sourceSets.test.runtimeClasspath + configurations.selfTestMinecraftRuntime
     mainClass = 'dev.voidfps.surface.SelfTest'
 }
 
