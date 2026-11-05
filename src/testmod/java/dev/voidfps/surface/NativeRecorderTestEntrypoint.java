@@ -94,7 +94,9 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
 
         System.out.println("VOID FPS native putBlockBakedQuad UV and emission test passed");
 
-        testResourceLoadedStoneModel();
+        // Queue this check: Fabric initializes this entrypoint inside the
+        // Minecraft constructor, before the resource-backed ModelManager exists.
+        Minecraft.getInstance().tell(NativeRecorderTestEntrypoint::testResourceLoadedStoneModel);
     }
 
     private static void testResourceLoadedStoneModel() {
