@@ -122,3 +122,12 @@ Run the new native `putBlockBakedQuad` fixture through CI and fix any constructo
 - Run `42028150859` failed only because it used an older workflow revision that still searched for the previous success-marker text. Its client log actually contains the new UV-and-emission success marker. The subsequent run `42028157731`, with the updated workflow check, passed. This was a workflow revision race, not an emission-test failure.
 - A follow-up fixture now checks the expected emitted packed value explicitly (`0x00700070`) before comparing the recorded vertices. This avoids relying solely on the same helper to generate the expected result.
 - This remains a synthetic quad/output-boundary test. It does not yet validate native world lighting preparation, ambient occlusion, actual loaded block models, or vanilla-versus-candidate parity.
+
+## Stronger emission assertion and model-access investigation (2026-11-05)
+
+- GitHub Actions run `42029588950` (run #200, commit `4de03f6f110b504e96c9095c55b9b069ca948951`) passed the Minecraft 26.3 test-client smoke test with the explicit expected emission value `0x00700070`.
+- GitHub Actions run `42029607460` (run #201, commit `f2283bb1bf1efedd71f11b4cfe909d99acaaef7b`) passed the documentation-only update.
+- The emission fixture now independently derives the expected packed channels and asserts the exact expected result before comparing the recorder output.
+- The next investigation adds `javap` output for Minecraft's `Minecraft` and `ModelManager` classes. The purpose is to identify the supported 26.3 accessor for a real block state's loaded `BlockStateModel`, so the next test can call `NativeModelSnapshot.collect` on the resource-loaded model rather than a hand-built fixture.
+- The existing `NativeModelSnapshot` preserves selected native parts, directional quad lists, unculled quads, and native material metadata. It remains a read-only adapter; it does not emit vertices.
+- A loaded-model snapshot test will still not prove lighting/AO parity. That requires a real world/region and the native section-compilation cache lifecycle. No renderer interception is enabled.
