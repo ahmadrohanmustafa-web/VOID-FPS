@@ -15,6 +15,7 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Test-only entrypoint. This class is compiled from src/testmod and is never
@@ -94,9 +95,12 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
 
         System.out.println("VOID FPS native putBlockBakedQuad UV and emission test passed");
 
-        // Queue this check: Fabric initializes this entrypoint inside the
-        // Minecraft constructor, before the resource-backed ModelManager exists.
-        Minecraft.getInstance().tell(NativeRecorderTestEntrypoint::testResourceLoadedStoneModel);
+        // Fabric invokes this entrypoint during Minecraft construction. Hop to
+        // a worker first, then enqueue onto the client event loop so the task
+        // cannot run inline before ModelManager has been initialized.
+        Minecraft minecraft = Minecraft.getInstance();
+        CompletableFuture.runAsync(() ->
+                minecraft.execute(NativeRecorderTestEntrypoint::testResourceLoadedStoneModel));
     }
 
     private static void testResourceLoadedStoneModel() {
