@@ -39,7 +39,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 packUv(uvs[2][0], uvs[2][1]),
                 packUv(uvs[3][0], uvs[3][1]),
                 Direction.SOUTH,
-                new MaterialInfo(null, null, null, null, null, -1, null, 0));
+                new MaterialInfo(null, null, null, null, null, -1, null, 7));
 
         int[] colors = {0xA1B2C3D4, 0x10203040, 0x50607080, 0x90A0B0C0};
         int[] lights = {0x00100020, 0x00200030, 0x00300040, 0x00400050};
@@ -55,8 +55,13 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                     positions[i].x() + 10.0f,
                     positions[i].y() - 2.0f,
                     positions[i].z() + 5.0f,
-                    colors[i], uvs[i][0], uvs[i][1], overlay, lights[i],
+                    colors[i], uvs[i][0], uvs[i][1], overlay,
+                    instance.getLightCoordsWithEmission(i, 7),
                     0.0f, 0.0f, 1.0f));
+            if (instance.getLightCoordsWithEmission(i, 7) == lights[i]) {
+                throw new IllegalStateException(
+                        "Emission fixture did not change packed light for vertex " + i);
+            }
         }
 
         // Exercise Minecraft's real packed-vertex default implementation.
@@ -74,7 +79,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             throw new IllegalStateException("NativeVertexRecorder clear check failed");
         }
 
-        System.out.println("VOID FPS native putBlockBakedQuad test passed");
+        System.out.println("VOID FPS native putBlockBakedQuad UV and emission test passed");
     }
 
     private static long packUv(float u, float v) {
