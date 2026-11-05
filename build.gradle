@@ -45,7 +45,7 @@ tasks.register('selfTest', JavaExec) {
 // The project currently uses a standalone main-based self-test suite rather
 // than JUnit. Gradle's default test task sees test sources but discovers no
 // framework tests; don't fail the build for that. The selfTest task above
-// executes the actual 29-check suite and remains part of "check".
+// executes the standalone self-test suite, including the test-only native vertex recorder contract, and remains part of "check".
 test {
     failOnNoDiscoveredTests = false
 }
