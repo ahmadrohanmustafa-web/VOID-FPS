@@ -56,3 +56,16 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 25
     options.encoding = 'UTF-8'
 }
+
+// A separate development-client run configuration adds test classes to the
+// runtime classpath without putting anything from src/test into the shipped JAR.
+loom {
+    runs {
+        testClient {
+            inherit client
+            displayName = "VOID FPS Test Client"
+            sourceSet = sourceSets.test.name
+            runDirectory = file("run/test-client")
+        }
+    }
+}
