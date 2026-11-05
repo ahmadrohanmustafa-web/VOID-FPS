@@ -38,7 +38,10 @@ processResources {
 
 tasks.register('selfTest', JavaExec) {
     dependsOn classes, testClasses
-    classpath = sourceSets.main.output + sourceSets.test.output
+    // Include Loom's resolved Minecraft runtime as well as the normal test
+    // runtime. The recorder implements Minecraft's VertexConsumer interface,
+    // so output-only classpaths fail when the self-test instantiates it.
+    classpath = sourceSets.test.runtimeClasspath + configurations.minecraft
     mainClass = 'dev.voidfps.surface.SelfTest'
 }
 
