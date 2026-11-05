@@ -102,3 +102,14 @@ A client-start smoke test is only infrastructure validation. It is **not** verte
 ### Immediate next implementation target
 
 Run the new native `putBlockBakedQuad` fixture through CI and fix any constructor, runtime, or expected-value mismatch. Once it passes, expand the fixture with non-zero packed UVs and material light emission, then investigate a real loaded block model and native model/lighting preparation. This remains a narrow API-path test; it must not be described as real block-model or vanilla/candidate parity. Keep production rendering disabled.
+
+## Latest CI verification (2026-11-05, run 42027066395)
+
+- Commit `03045a633e28d27158225ab992700cb6910faa54` passed the Gradle build and Minecraft 26.3 test-client smoke test.
+- The test-only client entrypoint logged `VOID FPS native putBlockBakedQuad test passed`.
+- The fixture used four distinct, non-zero packed UV coordinate pairs. The native `VertexConsumer.putBlockBakedQuad(...)` path successfully forwarded them into the recording consumer, where the captured ordered vertex records matched the expected values.
+- The same run's artifact contains the startup log and inspection output. The log confirms the required client and test-entrypoint checks passed; OpenGL and Vulkan backend creation errors occur afterward in the headless Xvfb environment. This is not evidence of rendered gameplay.
+- This test still uses a deterministic synthetic `BakedQuad` and manually prepared `QuadInstance`. It does not exercise native model selection, world lighting preparation, AO, culling, or a vanilla-versus-candidate comparison.
+- The release JAR remains separate from the test harness; test-only entrypoint and metadata are not part of the shipped mod.
+- The next fixture now assigns material light emission 7 and checks that Minecraft's own `QuadInstance.getLightCoordsWithEmission(...)` changes each packed light value before comparing the actual `putBlockBakedQuad` output. CI will also dump the `LightCoordsUtil` and `UVPair` bytecode for inspection.
+- Renderer interception remains disabled. No FPS improvement is claimed.
