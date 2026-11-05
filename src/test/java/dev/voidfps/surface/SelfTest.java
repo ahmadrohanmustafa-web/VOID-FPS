@@ -324,6 +324,28 @@ public final class SelfTest {
                         0).matches());
     }
 
+    static void nativeVertexRecorder() {
+        NativeVertexRecorder recorder = new NativeVertexRecorder();
+        NativeVertexRecord expected = new NativeVertexRecord(
+                1.25f, 2.5f, 3.75f, 0xA1B2C3D4, 0.125f, 0.875f,
+                0x12345678, 0x23456789, 0.0f, 1.0f, 0.0f);
+
+        // Exercise the same packed 11-argument default method used by putBlockBakedQuad.
+        recorder.addVertex(expected.x(), expected.y(), expected.z(),
+                expected.color(), expected.u(), expected.v(), expected.overlay(), expected.light(),
+                expected.normalX(), expected.normalY(), expected.normalZ());
+
+        List<NativeVertexRecord> captured = recorder.snapshot();
+        check("native VertexConsumer recorder captures one packed vertex",
+                captured.size() == 1);
+        check("native VertexConsumer recorder preserves all 11 values",
+                NativeVertexParity.compare(List.of(expected), captured, 0).matches());
+
+        recorder.clear();
+        check("native VertexConsumer recorder clear resets capture",
+                recorder.snapshot().isEmpty());
+    }
+
     public static void main(String[] args) {
         eligibility();
         culling();
@@ -331,6 +353,7 @@ public final class SelfTest {
         flatLighting();
         ambientOcclusion();
         nativeVertexComparison();
+        nativeVertexRecorder();
         System.out.println(checks + " checks, " + failures + " failures");
         System.exit(failures == 0 ? 0 : 1);
     }
