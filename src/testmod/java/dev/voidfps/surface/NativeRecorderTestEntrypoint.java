@@ -2,10 +2,14 @@ package dev.voidfps.surface;
 
 import com.mojang.blaze3d.vertex.QuadInstance;
 import net.fabricmc.api.ClientModInitializer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.block.BlockStateModelSet;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.geometry.BakedQuad.MaterialInfo;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.util.RandomSource;
 import net.minecraft.util.LightCoordsUtil;
 import org.joml.Vector3f;
 
@@ -89,6 +93,46 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         }
 
         System.out.println("VOID FPS native putBlockBakedQuad UV and emission test passed");
+
+        testResourceLoadedStoneModel();
+    }
+
+    private static void testResourceLoadedStoneModel() {
+        Minecraft minecraft = Minecraft.getInstance();
+        BlockStateModelSet modelSet = minecraft.getModelManager().getBlockStateModelSet();
+        var state = Blocks.STONE.defaultBlockState();
+        var model = modelSet.get(state);
+        if (model == null) {
+            throw new IllegalStateException("Resource-loaded stone BlockStateModel is missing");
+        }
+
+        long seed = 0x564F49444650534CL;
+        NativeModelSnapshot.Snapshot first =
+                NativeModelSnapshot.collect(model, RandomSource.create(seed));
+        NativeModelSnapshot.Snapshot second =
+                NativeModelSnapshot.collect(model, RandomSource.create(seed));
+        if (first.isEmpty()) {
+            throw new IllegalStateException("Resource-loaded stone model selected no parts");
+        }
+        if (!first.parts().equals(second.parts())) {
+            throw new IllegalStateException("Stone model selection changed for the same seed");
+        }
+
+        int directionalQuadCount = 0;
+        int unculledQuadCount = 0;
+        for (NativeModelSnapshot.Part part : first.parts()) {
+            unculledQuadCount += part.unculledQuads().size();
+            for (NativeModelSnapshot.FaceQuads face : part.directionalQuads()) {
+                directionalQuadCount += face.quads().size();
+            }
+        }
+        if (directionalQuadCount == 0) {
+            throw new IllegalStateException("Resource-loaded stone model has no directional quads");
+        }
+
+        System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
+                + first.parts().size() + ", directionalQuads=" + directionalQuadCount
+                + ", unculledQuads=" + unculledQuadCount);
     }
 
     private static long packUv(float u, float v) {
