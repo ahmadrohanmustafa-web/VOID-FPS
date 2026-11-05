@@ -93,3 +93,4 @@ jobs:
           path: |
             build/libs/*.jar
             build/void-fps-inspect/
+            build/void-fps-client-smoke.log
