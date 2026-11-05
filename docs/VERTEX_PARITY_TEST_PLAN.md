@@ -10,7 +10,7 @@ The existing engine-independent `SelfTest` suite tests VOID FPS's own simplified
 
 The comparison must happen at the native `VertexConsumer.addVertex(float, float, float, int, float, float, int, int, float, float, float)` boundary reached by `VertexConsumer.putBlockBakedQuad(...)`.
 
-Capture, in order, all 12 arguments for each of the four vertices:
+Capture, in order, all 11 arguments for each of the four vertices:
 
 1. translated X, Y, Z;
 2. packed vertex colour;
@@ -19,7 +19,7 @@ Capture, in order, all 12 arguments for each of the four vertices:
 5. packed light after `getLightCoordsWithEmission(vertex, materialLightEmission)`;
 6. normal X, Y, Z from the baked quad direction.
 
-Compare all 48 scalar values (with exact equality for integer fields and a documented small tolerance only for floating-point fields). Also compare vertex count and order. Do not compare screenshots alone: they can hide subtle lighting, UV, or ordering differences.
+Compare all 44 scalar values (with exact equality for integer fields and a documented small tolerance only for floating-point fields). Also compare vertex count and order. Do not compare screenshots alone: they can hide subtle lighting, UV, or ordering differences.
 
 ## Test execution design
 
