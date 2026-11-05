@@ -36,29 +36,18 @@ processResources {
     }
 }
 
-// Loom's `minecraft` configuration is a dependency bucket and cannot
-// be resolved directly. Give the standalone self-test a resolvable view of it.
-configurations {
-    selfTestMinecraftRuntime {
-        canBeResolved = true
-        canBeConsumed = false
-        extendsFrom minecraft
-    }
-}
-
+// The engine-independent self-test must stay runnable without Minecraft's
+// Loom-managed runtime. Native Minecraft recorder checks belong in the test client.
 tasks.register('selfTest', JavaExec) {
     dependsOn classes, testClasses
-    // Include Loom's resolved Minecraft runtime as well as the normal test
-    // runtime. The recorder implements Minecraft's VertexConsumer interface,
-    // so output-only classpaths fail when the self-test instantiates it.
-    classpath = sourceSets.test.runtimeClasspath + configurations.selfTestMinecraftRuntime
+    classpath = sourceSets.test.runtimeClasspath
     mainClass = 'dev.voidfps.surface.SelfTest'
 }
 
 // The project currently uses a standalone main-based self-test suite rather
 // than JUnit. Gradle's default test task sees test sources but discovers no
 // framework tests; don't fail the build for that. The selfTest task above
-// executes the standalone self-test suite, including the test-only native vertex recorder contract, and remains part of "check".
+// executes the dependency-free core self-test suite and remains part of "check". Minecraft-dependent recorder checks run only in the Loom test-client environment.
 test {
     failOnNoDiscoveredTests = false
 }
