@@ -1,4 +1,4 @@
-# UNTESTED workflow. Builds the mod with JDK 25 + Gradle 9.6.0 and dumps the real
+# Builds the mod with JDK 25 + Gradle 9.6.0 and dumps the real
 # Minecraft 26.3 method signatures so mixin targets can be verified without a local setup.
 name: build
 
