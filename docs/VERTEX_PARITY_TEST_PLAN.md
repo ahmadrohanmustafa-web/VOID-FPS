@@ -84,6 +84,7 @@ A client-start smoke test is only infrastructure validation. It is **not** verte
 
 - Build #169 passes the engine-independent self-tests.
 - Loom's development-client and test-source-set launch mechanisms are documented.
-- No real Minecraft client has yet been launched by this repository's CI.
-- No native vanilla/candidate vertex capture has yet run.
+- GitHub Actions run `42014818487` successfully launched the Minecraft 26.3 test client under Xvfb and observed the VOID FPS client entrypoint log.
+- The CI startup smoke log is now included in the `void-fps-build` artifact for future diagnosis.
+- No native vanilla/candidate vertex capture has yet run; startup success does not establish rendering parity.
 - Renderer interception remains disabled.
