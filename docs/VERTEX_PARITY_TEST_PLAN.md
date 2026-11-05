@@ -67,3 +67,23 @@ The renderer remains disabled until:
 - the test can be repeated deterministically.
 
 Only after parity passes should a separate integration milestone investigate a disabled-by-default interception point. FPS benchmarking is later still and must compare the same scene, hardware, settings, and workload.
+
+## Verified client-test launch options (2026-11-05)
+
+The current build uses Fabric Loom's non-remapping plugin for Minecraft 26.3. The official Loom documentation confirms that Loom supplies a `runClient` JavaExec task and supports additional run configurations whose source set can be `sourceSets.test`. This gives us a path to put test-only bootstrap code on a development-client classpath without adding test classes to the shipped JAR.
+
+Fabric's automated-testing documentation also describes client game tests launched from a production run task under Xvfb on Linux. That route is built around Fabric's game-test facilities and documents a Fabric API runtime dependency. VOID FPS currently has no Fabric API dependency, so we must not silently add that dependency or assume its game-test annotations and lifecycle are available.
+
+### Decision for the next implementation stage
+
+Use a dedicated Loom development-client run configuration with the test source set, then verify that the Minecraft 26.3 client can bootstrap in CI under a virtual display. Keep all test bootstrap classes in `src/test`; do not add a production mixin, do not register the currently empty mixin config, and do not alter the shipped client entrypoint's behavior.
+
+A client-start smoke test is only infrastructure validation. It is **not** vertex parity. The subsequent harness still needs a verified way to create/load a real test world and capture both vanilla and candidate output at the native `VertexConsumer.addVertex(...)` boundary. If that requires Fabric's game-test framework, isolate any API dependency to the test runtime and verify the exact 26.3 artifact before adding it.
+
+### Current state
+
+- Build #169 passes the engine-independent self-tests.
+- Loom's development-client and test-source-set launch mechanisms are documented.
+- No real Minecraft client has yet been launched by this repository's CI.
+- No native vanilla/candidate vertex capture has yet run.
+- Renderer interception remains disabled.
