@@ -131,3 +131,13 @@ Run the new native `putBlockBakedQuad` fixture through CI and fix any constructo
 - The next investigation adds `javap` output for Minecraft's `Minecraft` and `ModelManager` classes. The purpose is to identify the supported 26.3 accessor for a real block state's loaded `BlockStateModel`, so the next test can call `NativeModelSnapshot.collect` on the resource-loaded model rather than a hand-built fixture.
 - The existing `NativeModelSnapshot` preserves selected native parts, directional quad lists, unculled quads, and native material metadata. It remains a read-only adapter; it does not emit vertices.
 - A loaded-model snapshot test will still not prove lighting/AO parity. That requires a real world/region and the native section-compilation cache lifecycle. No renderer interception is enabled.
+
+
+## Resource-loaded model lookup verified (2026-11-05)
+
+- GitHub Actions run #202 (commit `930a466c74371581346e8f75a79e364fec0fe9c3`) passed. Its artifact confirms the Minecraft 26.3 accessor chain: `Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(blockState)`.
+- The model manager's block-state model set is initialized by the resource reload pipeline. The test must execute after client startup/resource loading, not during static initialization.
+- A new test-only client fixture obtains the actual resource-loaded `Blocks.STONE.defaultBlockState()` model, calls `NativeModelSnapshot.collect` twice with independently created random sources using the same fixed seed, and verifies a non-empty, repeatable selected-part snapshot with directional quads.
+- The test reports selected part, directional quad, and unculled quad counts. It does not yet compare those quads with vanilla section compilation output or validate prepared lighting/AO.
+- The test remains under `src/testmod`; the production entrypoint and renderer remain unchanged. CI will require the new resource-loaded snapshot success marker before passing the client smoke-test step.
+- Next: use the real model fixture to inspect native material/geometry eligibility, then investigate a real world/region and the vanilla section-compilation preparation path. Do not activate interception or claim parity/FPS gains.
