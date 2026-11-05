@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.geometry.BakedQuad.MaterialInfo;
 import net.minecraft.core.Direction;
+import net.minecraft.util.LightCoordsUtil;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -51,17 +52,25 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         for (int i = 0; i < 4; i++) {
             instance.setColor(i, colors[i]);
             instance.setLightCoords(i, lights[i]);
+            int emittedLight = instance.getLightCoordsWithEmission(i, 7);
+            // Bytecode-verified rule: emission raises both packed block and sky
+            // channels to at least the material emission level.
+            int expectedEmittedLight = LightCoordsUtil.pack(
+                    Math.max(LightCoordsUtil.block(lights[i]), 7),
+                    Math.max(LightCoordsUtil.sky(lights[i]), 7));
+            if (emittedLight != expectedEmittedLight || emittedLight != 0x00700070) {
+                throw new IllegalStateException(
+                        "Unexpected material emission result for vertex " + i
+                                + ": expected 0x00700070 but got 0x"
+                                + Integer.toHexString(emittedLight));
+            }
             expected.add(new NativeVertexRecord(
                     positions[i].x() + 10.0f,
                     positions[i].y() - 2.0f,
                     positions[i].z() + 5.0f,
                     colors[i], uvs[i][0], uvs[i][1], overlay,
-                    instance.getLightCoordsWithEmission(i, 7),
+                    expectedEmittedLight,
                     0.0f, 0.0f, 1.0f));
-            if (instance.getLightCoordsWithEmission(i, 7) == lights[i]) {
-                throw new IllegalStateException(
-                        "Emission fixture did not change packed light for vertex " + i);
-            }
         }
 
         // Exercise Minecraft's real packed-vertex default implementation.
