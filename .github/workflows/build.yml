@@ -37,8 +37,9 @@ jobs:
           status=$?
           set -e
           cat build/void-fps-client-smoke.log
-          if grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log; then
-            echo "Minecraft client reached the VOID FPS client entrypoint."
+          if grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log \
+            && grep -q "VOID FPS native recorder test passed" build/void-fps-client-smoke.log; then
+            echo "Minecraft client loaded VOID FPS and passed the native recorder runtime check."
           else
             echo "Minecraft client did not reach the VOID FPS client entrypoint (exit $status)."
             exit 1
