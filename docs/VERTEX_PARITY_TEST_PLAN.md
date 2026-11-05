@@ -82,9 +82,10 @@ A client-start smoke test is only infrastructure validation. It is **not** verte
 
 ### Current state
 
-- Build #169 passes the engine-independent self-tests.
+- GitHub Actions run `42020289401` on commit `e049dce051c5f9d35ce50e6850460deb50e0b491` passes `gradle build --no-daemon`, including the dependency-free engine-independent self-test suite.
 - Loom's development-client and test-source-set launch mechanisms are documented.
 - GitHub Actions run `42014818487` successfully launched the Minecraft 26.3 test client under Xvfb and observed the VOID FPS client entrypoint log.
+- The latest verification run `42020289401` also passes the Minecraft 26.3 startup smoke test after the self-test classpath was returned to a dependency-free configuration.
 - The CI startup smoke log is now included in the `void-fps-build` artifact for future diagnosis.
-- No native vanilla/candidate vertex capture has yet run; startup success does not establish rendering parity.
+- The `NativeVertexRecorder` compiles as test code, but its packed-call exercise is not currently run by the standalone self-test because loading `VertexConsumer` there requires Loom's Minecraft runtime. No native vanilla/candidate vertex capture has yet run; startup success does not establish rendering parity.
 - Renderer interception remains disabled.
