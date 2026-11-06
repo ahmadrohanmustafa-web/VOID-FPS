@@ -78,3 +78,41 @@ test-only client bootstrap that calls the verified normal flow, waits for a
 real `ClientLevel` and loaded chunks, then checks the section region and
 lighting. Keep the production renderer disabled until that real-world test
 and native vertex parity checks pass.
+
+## Build #233 bytecode results
+
+Build #233 passed and its artifact confirms these Minecraft 26.3 APIs:
+
+- `LevelSettings` has a public constructor taking the world name, game type,
+  difficulty settings, command permission flag, and `WorldDataConfiguration`.
+- `WorldOptions.defaultWithRandomSeed()` and
+  `WorldOptions.testWorldWithRandomSeed()` are available.
+- `WorldDimensions` can be created from the dimension-stem registry or a
+  dimension map, and supports replacing the overworld generator.
+- `WorldPresets.FLAT` is a registered preset key; `WorldPresets.fromSettings`
+  can identify a preset from dimensions.
+- `FlatLevelGeneratorSettings.getDefault(...)` accepts biome, structure-set,
+  and placed-feature lookups. Its constructor is public when supplied a biome
+  holder and placed-feature list.
+- `LevelStorageSource.createDefault(...)` and
+  `validateAndCreateAccess(...)` are available. The resulting
+  `LevelStorageAccess` exposes `safeClose()` / `close()` and
+  `deleteLevel()`; cleanup must happen only after the integrated server has
+  fully stopped and the access has been closed.
+- `WorldCreationContext` has constructors for assembled world-generation
+  settings and for options/dimensions plus the layered registries and
+  datapack resources.
+
+The flat generator source's exact constructor and the nested loader types are
+being added to the next bytecode dump before any bootstrap code is written.
+The current CI artifact also still only proves title-screen startup and the
+existing native model/vertex tests; it has not opened a world.
+
+## Test-world isolation requirements
+
+The future test must use a dedicated temporary game directory and a unique
+world ID. It must never reuse the developer's normal saves directory. It must
+wait for the normal integrated-server shutdown before closing storage and
+removing the disposable save. If the client cannot reliably complete this
+lifecycle under CI, retain the API inspection tests and do not fake a
+`ClientLevel`, chunks, or lighting.
