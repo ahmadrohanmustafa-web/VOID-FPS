@@ -86,6 +86,13 @@ jobs:
             net.minecraft.world.level.chunk.LevelChunk
             net.minecraft.world.level.chunk.LevelChunkSection
             net.minecraft.client.multiplayer.ClientLevel
+            net.minecraft.client.multiplayer.ClientPacketListener
+            net.minecraft.client.multiplayer.ClientLevel\$ClientLevelData
+            net.minecraft.client.renderer.extract.LevelExtractor
+            net.minecraft.client.multiplayer.ClientChunkCache
+            net.minecraft.client.server.IntegratedServer
+            net.minecraft.world.level.dimension.DimensionType
+            net.minecraft.world.level.chunk.ChunkAccess
             net.minecraft.client.renderer.chunk.SectionCompiler
           )
           for class in "${classes[@]}"; do
