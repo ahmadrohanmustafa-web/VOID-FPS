@@ -72,6 +72,16 @@ jobs:
           if [ -z "$MC_JAR" ]; then echo "Minecraft client jar not found"; exit 0; fi
           classes=(
             net.minecraft.client.Minecraft
+            net.minecraft.client.gui.screens.worldselection.WorldOpenFlows
+            net.minecraft.client.gui.screens.worldselection.CreateWorldScreen
+            net.minecraft.world.level.storage.LevelStorageSource
+            net.minecraft.server.MinecraftServer
+            net.minecraft.server.WorldStem
+            net.minecraft.world.level.levelgen.WorldOptions
+            net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings
+            net.minecraft.world.level.levelgen.flat.FlatLevelSource
+            net.minecraft.world.level.levelgen.presets.WorldPresets
+            net.minecraft.client.gui.screens.Screen
             net.minecraft.client.resources.model.ModelManager
             net.minecraft.client.renderer.block.ModelBlockRenderer
             net.minecraft.client.renderer.block.BlockModelLighter
