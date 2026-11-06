@@ -164,6 +164,10 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
                 + first.parts().size() + ", directionalQuads=" + directionalQuadCount
                 + ", unculledQuads=" + unculledQuadCount);
+
+        // This is an automated smoke-test client, not an interactive game session.
+        // Shut Minecraft down after every assertion has passed so CI can finish cleanly.
+        minecraft.stop();
     }
 
     private static long packUv(float u, float v) {
