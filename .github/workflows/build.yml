@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri libglx-mesa0
           set +e
           timeout 180s xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
-            bash -c 'glxinfo -B > build/void-fps-glx-info.log 2>&1 || true; exec env SDL_VIDEO_X11_FORCE_EGL=1 LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe GALLIUM_DRIVER=llvmpipe gradle runTestClient --no-daemon' \
+            bash -c 'glxinfo -B > build/void-fps-glx-info.log 2>&1 || true; exec env SDL_VIDEO_FORCE_EGL=1 LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe GALLIUM_DRIVER=llvmpipe gradle runTestClient --no-daemon' \
             > build/void-fps-client-smoke.log 2>&1
           status=$?
           set -e
