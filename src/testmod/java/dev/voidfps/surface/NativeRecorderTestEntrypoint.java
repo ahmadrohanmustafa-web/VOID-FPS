@@ -194,8 +194,10 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         assertNativeEligibilityRejected(Blocks.CHEST.defaultBlockState(), "chest",
                 "block state declares a block entity");
         assertNativeEligibilityRejected(Blocks.GLASS.defaultBlockState(), "glass",
+                "block state is not a solid render state",
                 "block state cannot occlude neighbouring faces");
         assertNativeEligibilityRejected(Blocks.OAK_STAIRS.defaultBlockState(), "oak stairs",
+                "block state is not a solid render state",
                 "block state does not have a full-block occlusion shape");
         assertNativeEligibilityRejected(Blocks.GLOWSTONE.defaultBlockState(), "glowstone",
                 "block state emits light");
@@ -217,13 +219,15 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
     private static void assertNativeEligibilityRejected(
             net.minecraft.world.level.block.state.BlockState state,
             String label,
-            String expectedReasonPrefix) {
+            String... expectedReasonPrefixes) {
         var result = SurfaceEligibility.analyzeNativeModel(state, null);
-        if (result.supported() || result.rejectReason() == null
-                || !result.rejectReason().startsWith(expectedReasonPrefix)) {
+        boolean expectedReason = result.rejectReason() != null
+                && java.util.Arrays.stream(expectedReasonPrefixes)
+                        .anyMatch(result.rejectReason()::startsWith);
+        if (result.supported() || !expectedReason) {
             throw new IllegalStateException(
-                    "Native eligibility rejected " + label + " for an unexpected reason. Expected prefix '"
-                            + expectedReasonPrefix + "' but got: " + result);
+                    "Native eligibility rejected " + label + " for an unexpected reason. Expected one of "
+                            + java.util.Arrays.toString(expectedReasonPrefixes) + " but got: " + result);
         }
         System.out.println("VOID FPS safely rejected " + label
                 + " through native eligibility: " + result.rejectReason());
