@@ -160,14 +160,42 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         if (directionalQuadCount == 0) {
             throw new IllegalStateException("Resource-loaded stone model has no directional quads");
         }
+        if (!first.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException(
+                    "Stone model did not satisfy the six unit-boundary-face geometry precheck");
+        }
+        if (!first.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException(
+                    "Stone model did not satisfy the plain solid untinted material precheck");
+        }
+
+        verifyVanillaStoneFaceCulling();
 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
                 + first.parts().size() + ", directionalQuads=" + directionalQuadCount
                 + ", unculledQuads=" + unculledQuadCount);
+        System.out.println("VOID FPS stone geometry/material prechecks passed");
+        System.out.println("VOID FPS vanilla stone face-culling checks passed for all 6 directions");
 
         // This is an automated smoke-test client, not an interactive game session.
         // Shut Minecraft down after every assertion has passed so CI can finish cleanly.
         minecraft.stop();
+    }
+
+    private static void verifyVanillaStoneFaceCulling() {
+        var stone = Blocks.STONE.defaultBlockState();
+        var air = Blocks.AIR.defaultBlockState();
+
+        for (Direction direction : Direction.values()) {
+            if (!net.minecraft.world.level.block.Block.shouldRenderFace(stone, air, direction)) {
+                throw new IllegalStateException(
+                        "Vanilla unexpectedly culled stone against air on " + direction);
+            }
+            if (net.minecraft.world.level.block.Block.shouldRenderFace(stone, stone, direction)) {
+                throw new IllegalStateException(
+                        "Vanilla unexpectedly rendered the internal stone face on " + direction);
+            }
+        }
     }
 
     private static long packUv(float u, float v) {
