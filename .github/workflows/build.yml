@@ -82,6 +82,10 @@ jobs:
             net.minecraft.client.resources.model.geometry.BakedQuad\$MaterialInfo
             net.minecraft.client.renderer.block.BlockAndTintGetter
             net.minecraft.client.renderer.chunk.RenderSectionRegion
+            net.minecraft.client.renderer.chunk.SectionCopy
+            net.minecraft.world.level.chunk.LevelChunk
+            net.minecraft.world.level.chunk.LevelChunkSection
+            net.minecraft.client.multiplayer.ClientLevel
             net.minecraft.client.renderer.chunk.SectionCompiler
           )
           for class in "${classes[@]}"; do
