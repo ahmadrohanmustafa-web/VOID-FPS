@@ -244,3 +244,38 @@ widget/container event-handler classes. The intended route is to dispatch a
 real screen input event at the located active Create button, allowing vanilla
 hit-testing to choose the widget. Direct callback invocation remains a
 fallback only if normal event dispatch cannot be made deterministic.
+
+
+## Build #243: vanilla screen mouse-event dispatch verified
+
+Build #243 passed. Its Minecraft 26.3 bytecode confirms the normal dispatch
+path is inherited by `Screen` from `ContainerEventHandler`:
+
+- `Screen.children()` exposes the registered GUI event listeners.
+- `ContainerEventHandler.getChildAt(x, y)` searches those children using
+  each listener's `isMouseOver(x, y)` hit-test.
+- `ContainerEventHandler.mouseClicked(event, doubleClick)` dispatches to
+  the hit-tested child. If that child handles the event and requests focus,
+  the container updates focus; it also updates drag state for the relevant
+  mouse button.
+- `AbstractWidget.mouseClicked(...)` checks the widget's active state and
+  valid click button before invoking its click behavior.
+
+Therefore the preferred driver is to find the actual Create button among the
+expected `CreateWorldScreen` children, verify it is visible and active, and
+send a primary-button event through the screen's inherited
+`mouseClicked(...)` dispatch. This preserves vanilla hit-testing and widget
+checks. Do not call the button's callback or `onClick(...)` directly.
+
+The `MouseButtonEvent` constructor takes screen-space x/y coordinates and a
+`MouseButtonInfo`; Build #243 did not include the latter class's bytecode.
+Build #245 adds that final constructor inspection. Coordinates must be the
+button center in the screen's GUI coordinate system, not raw window pixels.
+
+This is still API verification, not a working world-creation driver. The
+test must also prove that the button is uniquely identified after asynchronous
+screen preparation, that the expected screen remains current, and that
+world-open/chunk/lighting waits and orderly teardown work. Unexpected
+confirmation screens remain fail-closed.
+
+No production rendering changes are authorized by this finding.
