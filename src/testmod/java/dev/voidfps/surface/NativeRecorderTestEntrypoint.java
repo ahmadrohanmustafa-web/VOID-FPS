@@ -169,12 +169,36 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                     "Stone model did not satisfy the plain solid untinted material precheck");
         }
 
+        // Exercise the actual native eligibility gate, not just its individual geometry
+        // and material predicates. Stone should pass; air and block-entity states must fall
+        // back to vanilla before any custom surface path can be considered.
+        var stoneEligibility = SurfaceEligibility.analyzeNativeModel(state, first);
+        if (!stoneEligibility.supported()) {
+            throw new IllegalStateException(
+                    "Native eligibility rejected ordinary stone: " + stoneEligibility.rejectReason());
+        }
+        var airEligibility = SurfaceEligibility.analyzeNativeModel(
+                Blocks.AIR.defaultBlockState(), null);
+        if (airEligibility.supported()
+                || !"block state is not a solid render state".equals(airEligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Native eligibility did not safely reject air: " + airEligibility);
+        }
+        var chestEligibility = SurfaceEligibility.analyzeNativeModel(
+                Blocks.CHEST.defaultBlockState(), null);
+        if (chestEligibility.supported()
+                || !"block state declares a block entity".equals(chestEligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Native eligibility did not safely reject chest: " + chestEligibility);
+        }
+
         verifyVanillaStoneFaceCulling();
 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
                 + first.parts().size() + ", directionalQuads=" + directionalQuadCount
                 + ", unculledQuads=" + unculledQuadCount);
         System.out.println("VOID FPS stone geometry/material prechecks passed");
+        System.out.println("VOID FPS native eligibility gate passed: stone accepted, air and chest rejected");
         System.out.println("VOID FPS vanilla stone face-culling checks passed for all 6 directions");
 
         // This is an automated smoke-test client, not an interactive game session.
