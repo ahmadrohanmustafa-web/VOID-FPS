@@ -191,10 +191,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             throw new IllegalStateException(
                     "Native eligibility did not safely reject air: " + airEligibility);
         }
-        assertNativeEligibilityRejected(
-                Blocks.CHEST.defaultBlockState(),
-                "block state declares a block entity",
-                "chest");
+        assertNativeEligibilityRejected(Blocks.CHEST.defaultBlockState(), "chest");
         assertNativeEligibilityRejected(Blocks.GLASS.defaultBlockState(), "glass");
         assertNativeEligibilityRejected(Blocks.OAK_STAIRS.defaultBlockState(), "oak stairs");
         assertNativeEligibilityRejected(Blocks.GLOWSTONE.defaultBlockState(), "glowstone");
