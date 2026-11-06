@@ -24,10 +24,10 @@ public final class SurfaceEligibility {
 
     /**
      * Native-model gate for the narrow opaque full-cube candidate set. It checks native
-     * block-state solidity, occlusion capability, block light emission, selected native
-     * geometry, and native quad material metadata. It is still only an eligibility precheck:
-     * block-entity exclusion, full native face-occlusion shapes, and exact vanilla lighting/culling/output parity
-     * must be established before any custom renderer is activated.
+     * block-entity exclusion, block-state solidity, occlusion capability and face-occlusion
+     * shapes, block light emission, selected native geometry, and native quad material metadata.
+     * It is still only an eligibility precheck: exact vanilla lighting, ambient-occlusion,
+     * culling, and vertex-output parity must be established before any custom renderer is activated.
      */
     public record NativeGeometryAnalysis(boolean supported, String rejectReason) {
     }
