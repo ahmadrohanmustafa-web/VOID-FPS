@@ -279,3 +279,39 @@ world-open/chunk/lighting waits and orderly teardown work. Unexpected
 confirmation screens remain fail-closed.
 
 No production rendering changes are authorized by this finding.
+
+
+## Builds #245–#246: real mouse event and Create button identity
+
+Builds #245 and #246 passed. The Minecraft 26.3 bytecode confirms:
+
+- `MouseButtonInfo(int button, int modifiers)` is the metadata record.
+  The primary mouse button is index `0`; no modifiers is `0`.
+- `MouseButtonEvent(double x, double y, MouseButtonInfo)` carries GUI
+  screen-space coordinates and exposes the button and modifier values.
+- `ContainerEventHandler.mouseClicked(event, doubleClick)` uses
+  `getChildAt(x, y)`, then dispatches to the hit-tested child. The widget's
+  own `mouseClicked` checks active state, valid button, and hover bounds.
+- `CreateWorldScreen` builds its Create button with the translatable key
+  `selectWorld.create`; its callback is the normal `onCreate()` path.
+  The Cancel button is a separate sibling.
+- `Screen.children()` exposes the registered event listeners. The Create
+  button is added through the normal layout widget registration.
+
+The test driver should identify exactly one widget by its translatable
+component key, require it to be a visible and active `Button`, and verify
+the click center resolves back to that same widget through
+`getChildAt` before dispatch. This extra identity check matters because
+`getChildAt` returns the first overlapping child in list order. Only then
+may it send `new MouseButtonEvent(centerX, centerY,
+new MouseButtonInfo(0, 0))` through the expected current
+`CreateWorldScreen`.
+
+The current test entrypoint still runs only the native vertex and
+resource-loaded stone-model checks and then stops the client. No world has
+been created yet. Before adding the driver, the next inspection verifies the
+component's translatable-key accessor and GUI window coordinate semantics.
+The test run must continue to use its isolated `run/test-client` directory;
+production entrypoints and the published JAR remain unchanged.
+
+No production rendering changes or FPS claims follow from these API findings.
