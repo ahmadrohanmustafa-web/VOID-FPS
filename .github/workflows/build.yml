@@ -37,6 +37,10 @@ jobs:
           status=$?
           set -e
           cat build/void-fps-client-smoke.log
+          if [ "$status" -ne 0 ]; then
+            echo "Minecraft test client exited with status $status."
+            exit "$status"
+          fi
           grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log
           grep -q "VOID FPS native putBlockBakedQuad UV and emission test passed" build/void-fps-client-smoke.log
           grep -q "VOID FPS resource-loaded stone model snapshot passed" build/void-fps-client-smoke.log
