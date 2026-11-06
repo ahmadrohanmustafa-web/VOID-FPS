@@ -15,7 +15,7 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletableFuture;\nimport java.util.concurrent.TimeUnit;
 
 /**
  * Test-only entrypoint. This class is compiled from src/testmod and is never
@@ -95,12 +95,36 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
 
         System.out.println("VOID FPS native putBlockBakedQuad UV and emission test passed");
 
-        // Fabric invokes this entrypoint during Minecraft construction. Hop to
-        // a worker first, then enqueue onto the client event loop so the task
-        // cannot run inline before ModelManager has been initialized.
+        // Fabric invokes this entrypoint during Minecraft construction, before
+        // the initial resource reload has populated ModelManager. Poll from a
+        // delayed executor, then inspect the model only on the client thread.
         Minecraft minecraft = Minecraft.getInstance();
-        CompletableFuture.runAsync(() ->
-                minecraft.execute(NativeRecorderTestEntrypoint::testResourceLoadedStoneModel));
+        long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+        scheduleStoneModelTest(minecraft, deadlineNanos);
+    }
+
+    private static void scheduleStoneModelTest(Minecraft minecraft, long deadlineNanos) {
+        CompletableFuture.delayedExecutor(100, TimeUnit.MILLISECONDS).execute(() ->
+                minecraft.execute(() -> {
+                    try {
+                        // This getter throws until the block-state models have been
+                        // installed by Minecraft's initial resource reload.
+                        minecraft.getModelManager().getBlockStateModelSet();
+                    } catch (NullPointerException notReady) {
+                        if (!"Block models not yet initialized".equals(notReady.getMessage())) {
+                            throw notReady;
+                        }
+                        if (System.nanoTime() >= deadlineNanos) {
+                            throw new IllegalStateException(
+                                    "Timed out waiting for Minecraft's block models to initialize",
+                                    notReady);
+                        }
+                        scheduleStoneModelTest(minecraft, deadlineNanos);
+                        return;
+                    }
+
+                    testResourceLoadedStoneModel();
+                }));
     }
 
     private static void testResourceLoadedStoneModel() {
