@@ -29,10 +29,10 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri libglx-mesa0
           set +e
           timeout 180s xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
-            env LIBGL_ALWAYS_SOFTWARE=1 gradle runTestClient --no-daemon \
+            bash -c 'glxinfo -B > build/void-fps-glx-info.log 2>&1 || true; exec env LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe GALLIUM_DRIVER=llvmpipe gradle runTestClient --no-daemon' \
             > build/void-fps-client-smoke.log 2>&1
           status=$?
           set -e
@@ -94,3 +94,4 @@ jobs:
             build/libs/*.jar
             build/void-fps-inspect/
             build/void-fps-client-smoke.log
+            build/void-fps-glx-info.log
