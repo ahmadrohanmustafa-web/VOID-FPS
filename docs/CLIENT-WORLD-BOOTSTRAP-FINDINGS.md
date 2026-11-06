@@ -37,3 +37,44 @@ building the section-region fixture.
 
 No production mixins or renderer activation. This investigation remains test
 infrastructure only; all production block rendering stays vanilla.
+
+## Follow-up: verified creation path from Build #232
+
+Builds #231 and #232 passed. Build #232's artifact contains the Minecraft 26.3
+bytecode for the world-opening classes. The exact `WorldOpenFlows.createFreshLevel(...)` signature is:
+
+```java
+createFreshLevel(
+    String levelId,
+    LevelSettings settings,
+    WorldOptions options,
+    Function<HolderLookup.Provider, WorldDimensions> dimensionsFactory,
+    Screen returnScreen
+)
+```
+
+
+Its bytecode confirms this is not a fake-world shortcut: it creates a
+`LevelStorageAccess` through `LevelStorageSource.validateAndCreateAccess(...)`,
+loads the selected datapacks and world data, builds a `WorldStem`,
+then calls `Minecraft.doWorldLoad(...)` to enter the normal integrated
+single-player lifecycle. `WorldOptions.testWorldWithRandomSeed()`
+also exists in this target version, but the exact flat-dimension factory and
+`LevelSettings` construction still need inspection.
+
+Important limitation: `createFreshLevel(...)` changes the active screen,
+creates a world save directory, and performs world loading. The CI test must
+therefore use an isolated temporary game directory and a unique test-world ID;
+it must not touch a player's normal saves. Cleanup must happen only after the
+server and storage access have shut down cleanly.
+
+## Next test-only inspection
+
+Build #233 expands bytecode coverage for `LevelSettings`,
+`WorldDimensions`, `WorldLoader`, `WorldCreationContext`,
+`ServerPacksSource`, `LevelDataAndDimensions`, and related
+configuration types. Once those constructors/factories are confirmed, add a
+test-only client bootstrap that calls the verified normal flow, waits for a
+real `ClientLevel` and loaded chunks, then checks the section region and
+lighting. Keep the production renderer disabled until that real-world test
+and native vertex parity checks pass.
