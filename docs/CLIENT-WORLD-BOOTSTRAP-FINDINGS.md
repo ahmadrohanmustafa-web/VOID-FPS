@@ -192,3 +192,31 @@ Minecraft's normal lifecycle before deleting the temporary directory.
 
 No production mixin, renderer activation, or FPS claim is justified by these
 API-inspection results alone.
+
+
+## Builds #239–#240: verified normal Create button callback
+
+Builds #239 and #240 passed. Build #240's Minecraft 26.3 bytecode confirms:
+
+- `CreateWorldScreen.init()` creates the Create button with a `Button.OnPress`
+  callback. The generated callback is `lambda$init$0(Button)`, and its body
+  calls the screen's private `onCreate()` method.
+- `Screen.children()` returns the screen's GUI event-listener children.
+  The Create button is registered as a widget during the screen's normal
+  layout initialization.
+- `Button.onPress(InputWithModifiers)` invokes the button's stored
+  `Button.OnPress` callback. It does not independently recreate world
+  creation logic; it reaches the same callback used by the button.
+- `AbstractWidget.mouseClicked(...)` is a separate mouse-event route. The
+  `Button.onPress(...)` method is a simpler test-driver entry point, but its
+  input parameter and enabled/active-state behavior must be checked before
+  choosing it.
+
+This means a test-only driver can likely locate the Create button among the
+screen's children and invoke its normal callback, without reflecting into the
+private CreateWorldScreen.onCreate() method. Do not implement this until the
+`AbstractButton` and `InputWithModifiers` APIs are confirmed and the driver
+checks the button is active and visible.
+
+The CI workflow now also dumps `AbstractButton`, `Button.OnPress`, and
+`InputWithModifiers` bytecode for that final check.
