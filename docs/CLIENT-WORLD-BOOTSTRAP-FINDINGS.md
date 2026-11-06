@@ -220,3 +220,27 @@ checks the button is active and visible.
 
 The CI workflow now also dumps `AbstractButton`, `Button.OnPress`, and
 `InputWithModifiers` bytecode for that final check.
+
+
+## Builds #241–#242: button activation API boundary
+
+Builds #241 and #242 passed. The Build #242 bytecode verifies:
+
+- `AbstractButton.onPress(InputWithModifiers)` is abstract; `Button`
+  implements it by invoking its stored `Button.OnPress` callback.
+- `AbstractButton.onClick(MouseButtonEvent, boolean)` forwards directly to
+  `onPress(...)`. Calling this method directly would bypass the screen's
+  normal hit-testing and active-state checks, so it is not the preferred
+  automation route.
+- `AbstractButton.keyPressed(KeyEvent)` checks `isActive()` and only invokes
+  the callback for a selection key. This is closer to normal input handling,
+  but requires a correctly constructed key event and focused widget.
+- `ConfirmScreen` builds its own yes/no buttons and can delay their activation
+  through `setDelay(...)`; a test driver must not blindly press a confirmation
+  button or accept an unexpected confirmation screen.
+
+The next inspection adds `Screen`, `MouseButtonEvent`, `KeyEvent`, and the
+widget/container event-handler classes. The intended route is to dispatch a
+real screen input event at the located active Create button, allowing vanilla
+hit-testing to choose the widget. Direct callback invocation remains a
+fallback only if normal event dispatch cannot be made deterministic.
