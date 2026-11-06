@@ -74,6 +74,20 @@ jobs:
             net.minecraft.client.Minecraft
             net.minecraft.client.gui.screens.worldselection.WorldOpenFlows
             net.minecraft.client.gui.screens.worldselection.CreateWorldScreen
+            net.minecraft.client.gui.screens.worldselection.WorldCreationUiState
+            net.minecraft.client.gui.screens.worldselection.WorldCreationUiState\$SelectedGameMode
+            net.minecraft.client.gui.screens.worldselection.InitialWorldCreationOptions
+            net.minecraft.client.gui.screens.worldselection.CreateWorldCallback
+            net.minecraft.client.gui.screens.worldselection.WorldCreationContextMapper
+            net.minecraft.client.gui.screens.worldselection.DataPackReloadCookie
+            net.minecraft.world.level.levelgen.FlatLevelSource
+            net.minecraft.world.level.levelgen.WorldGenSettings
+            net.minecraft.world.level.dimension.LevelStem
+            net.minecraft.world.level.levelgen.presets.WorldPreset
+            net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorPreset
+            net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings
+            net.minecraft.world.level.levelgen.structure.StructureSet
+            net.minecraft.world.level.levelgen.placement.PlacedFeature
             net.minecraft.world.level.storage.LevelStorageSource
             net.minecraft.server.MinecraftServer
             net.minecraft.server.WorldStem
