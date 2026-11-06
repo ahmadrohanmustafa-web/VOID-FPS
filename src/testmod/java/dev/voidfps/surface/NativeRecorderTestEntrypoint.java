@@ -184,13 +184,22 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             throw new IllegalStateException(
                     "Native eligibility did not safely reject air: " + airEligibility);
         }
-        var chestEligibility = SurfaceEligibility.analyzeNativeModel(
-                Blocks.CHEST.defaultBlockState(), null);
-        if (chestEligibility.supported()
-                || !"block state declares a block entity".equals(chestEligibility.rejectReason())) {
-            throw new IllegalStateException(
-                    "Native eligibility did not safely reject chest: " + chestEligibility);
-        }
+        assertNativeEligibilityRejected(
+                Blocks.CHEST.defaultBlockState(),
+                "block state declares a block entity",
+                "chest");
+        assertNativeEligibilityRejected(
+                Blocks.GLASS.defaultBlockState(),
+                "block state cannot occlude neighbouring faces",
+                "glass");
+        assertNativeEligibilityRejected(
+                Blocks.OAK_STAIRS.defaultBlockState(),
+                "block state does not have a full-block occlusion shape",
+                "oak stairs");
+        assertNativeEligibilityRejected(
+                Blocks.GLOWSTONE.defaultBlockState(),
+                "block state emits light",
+                "glowstone");
 
         verifyVanillaStoneFaceCulling();
 
@@ -198,12 +207,25 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 + first.parts().size() + ", directionalQuads=" + directionalQuadCount
                 + ", unculledQuads=" + unculledQuadCount);
         System.out.println("VOID FPS stone geometry/material prechecks passed");
-        System.out.println("VOID FPS native eligibility gate passed: stone accepted, air and chest rejected");
+        System.out.println("VOID FPS native eligibility gate passed: stone accepted; air, chest, glass, stairs, and glowstone rejected");
         System.out.println("VOID FPS vanilla stone face-culling checks passed for all 6 directions");
 
         // This is an automated smoke-test client, not an interactive game session.
         // Shut Minecraft down after every assertion has passed so CI can finish cleanly.
         minecraft.stop();
+    }
+
+    private static void assertNativeEligibilityRejected(
+            net.minecraft.world.level.block.state.BlockState state,
+            String expectedReasonPrefix,
+            String label) {
+        var result = SurfaceEligibility.analyzeNativeModel(state, null);
+        if (result.supported()
+                || result.rejectReason() == null
+                || !result.rejectReason().startsWith(expectedReasonPrefix)) {
+            throw new IllegalStateException(
+                    "Native eligibility did not safely reject " + label + ": " + result);
+        }
     }
 
     private static void verifyVanillaStoneFaceCulling() {
