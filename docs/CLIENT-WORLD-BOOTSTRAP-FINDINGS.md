@@ -148,3 +148,47 @@ The bytecode also shows the test-world callback ultimately delegates to the
 screen's regular `createWorldAndCleanup(...)` path. That is preferable to
 hand-constructing a client world, but UI automation and teardown behavior
 still need to be proven before enabling it in CI.
+
+## Build #237: actual create action and confirmation path
+
+Build #237 passed. Inspecting the artifact's full bytecode clarified the
+remaining UI step:
+
+- `CreateWorldScreen.onCreate()` is private. It bakes the selected dimensions,
+  builds `LevelSettings`, `PrimaryLevelData`, `WorldGenSettings`, and
+  `WorldDataAndGenSettings`, then calls
+  `WorldOpenFlows.confirmWorldCreation(...)`.
+- For stable world data, `confirmWorldCreation` immediately runs the normal
+  create callback. Experimental or deprecated registry lifecycle states show
+  a `ConfirmScreen` instead.
+- The test-world callback ultimately calls
+  `CreateWorldScreen.createNewWorld(...)`. That method creates the save
+  access, copies datapacks, and calls
+  `WorldOpenFlows.createLevelFromExistingSettings(...)`.
+- The create-world screen has a regular button action wired to `onCreate()`.
+  This is the safest automation target: drive the normal button callback
+  after the test-world screen is fully initialized, rather than directly
+  constructing a `ClientLevel` or integrated server.
+
+Correction/precision: `CreateWorldScreen.testWorld(...)` passes the
+`FLAT_ALL_DIMENSIONS` preset key to the screen, while its worldgen supplier
+uses `WorldPresets.createTestWorldDimensions(...)`. It should be described
+as Minecraft's built-in test-world flow, not assumed to be the ordinary
+custom-flat preset.
+
+## Next implementation boundary
+
+The next CI work should inspect the exact button/widget access and confirmation
+screen callbacks, then add a test-only driver with a strict timeout. It must
+wait for the test-world screen's asynchronous datapack/registry preparation,
+activate the normal Create button, handle only the expected stable/known
+confirmation state, and fail closed on any unexpected screen.
+
+The test must run with a unique world name under an isolated temporary game
+directory. After the world opens, wait for `Minecraft.hasSingleplayerServer()`,
+a non-null `ClientLevel`, and actual loaded chunks before inspecting
+`RenderSectionRegion` and lighting. Shutdown the integrated server through
+Minecraft's normal lifecycle before deleting the temporary directory.
+
+No production mixin, renderer activation, or FPS claim is justified by these
+API-inspection results alone.
