@@ -78,8 +78,19 @@ jobs:
             net.minecraft.server.MinecraftServer
             net.minecraft.server.WorldStem
             net.minecraft.world.level.levelgen.WorldOptions
+            net.minecraft.world.level.levelgen.WorldDimensions
+            net.minecraft.world.level.LevelSettings
+            net.minecraft.world.level.WorldDataConfiguration
+            net.minecraft.world.level.GameType
+            net.minecraft.world.Difficulty
+            net.minecraft.world.level.storage.LevelDataAndDimensions
+            net.minecraft.world.level.storage.WorldData
+            net.minecraft.world.level.storage.LevelStorageSource\$LevelStorageAccess
+            net.minecraft.server.WorldLoader
+            net.minecraft.server.packs.repository.ServerPacksSource
+            net.minecraft.client.gui.screens.worldselection.WorldCreationContext
+            net.minecraft.world.level.gamerules.GameRules
             net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings
-            net.minecraft.world.level.levelgen.flat.FlatLevelSource
             net.minecraft.world.level.levelgen.presets.WorldPresets
             net.minecraft.client.gui.screens.Screen
             net.minecraft.client.resources.model.ModelManager
