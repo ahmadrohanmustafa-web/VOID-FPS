@@ -80,6 +80,7 @@ jobs:
             net.minecraft.client.gui.components.events.AbstractContainerEventHandler
             net.minecraft.client.gui.screens.Screen
             net.minecraft.client.input.MouseButtonEvent
+            net.minecraft.client.input.MouseButtonInfo
             net.minecraft.client.input.KeyEvent
             net.minecraft.client.gui.components.AbstractButton
             net.minecraft.client.gui.components.Button
