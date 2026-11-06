@@ -116,3 +116,35 @@ wait for the normal integrated-server shutdown before closing storage and
 removing the disposable save. If the client cannot reliably complete this
 lifecycle under CI, retain the API inspection tests and do not fake a
 `ClientLevel`, chunks, or lighting.
+
+## Build #235 bytecode inspection: flat generator and built-in test preset
+
+Build #235 passed. The artifact verifies:
+
+- `FlatLevelSource(FlatLevelGeneratorSettings)` is the actual flat chunk
+  generator constructor.
+- `WorldDimensions.replaceOverworldGenerator(provider, generator)` can
+  replace the overworld generator while retaining the other dimensions.
+- `WorldCreationContext` carries the options, selected dimensions,
+  world-generation registries, server datapack resources, and data
+  configuration required by the normal create-world flow.
+- `LevelStorageAccess` implements `AutoCloseable`; its public
+  `safeClose()`, `close()`, and `deleteLevel()` operations make orderly
+  cleanup possible.
+- `CreateWorldScreen.testWorld(minecraft, callback)` is a vanilla-provided
+  test-world entry point. Its bytecode selects
+  `WorldPresets.FLAT_ALL_DIMENSIONS` and prepares the normal world-creation
+  screen and datapack/registry bootstrap.
+
+Important finding: `CreateWorldScreen.testWorld(...)` does **not** itself
+start a world. It opens the world-creation UI; the create action is still
+performed later by the screen's `onCreate()` path. We must not mistake this
+method for an automatic headless fixture. A CI test would need a verified,
+test-only way to drive the screen's normal create action (or a separate
+supported API path), with a dedicated temporary game directory and orderly
+server/storage cleanup.
+
+The bytecode also shows the test-world callback ultimately delegates to the
+screen's regular `createWorldAndCleanup(...)` path. That is preferable to
+hand-constructing a client world, but UI automation and teardown behavior
+still need to be proven before enabling it in CI.
