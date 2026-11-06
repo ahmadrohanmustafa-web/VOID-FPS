@@ -81,7 +81,8 @@ jobs:
             net.minecraft.client.gui.screens.Screen
             net.minecraft.network.chat.Component
             net.minecraft.network.chat.contents.TranslatableContents
-            net.minecraft.client.gui.Window
+            com.mojang.blaze3d.platform.Window
+            net.minecraft.client.MouseHandler
             net.minecraft.client.input.MouseButtonEvent
             net.minecraft.client.input.MouseButtonInfo
             net.minecraft.client.input.KeyEvent
