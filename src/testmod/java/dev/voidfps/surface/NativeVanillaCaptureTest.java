@@ -86,7 +86,12 @@ final class NativeVanillaCaptureTest {
                 Blocks.OBSIDIAN.defaultBlockState(),
                 Blocks.NETHERRACK.defaultBlockState(),
                 Blocks.QUARTZ_BLOCK.defaultBlockState(),
-                Blocks.MOSS_BLOCK.defaultBlockState()
+                Blocks.MOSS_BLOCK.defaultBlockState(),
+                // Exercise directional cube textures and multi-material face layouts.
+                Blocks.HAY_BLOCK.defaultBlockState(),
+                Blocks.PUMPKIN.defaultBlockState(),
+                Blocks.BOOKSHELF.defaultBlockState(),
+                Blocks.TNT.defaultBlockState()
         };
 
         for (int index = 0; index < states.length; index++) {
