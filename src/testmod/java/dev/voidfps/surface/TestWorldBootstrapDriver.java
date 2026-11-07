@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * vanilla Create World screen and verifies a real FULL client chunk.
  */
 final class TestWorldBootstrapDriver {
-    private static final long SCREEN_TIMEOUT_NANOS = TimeUnit.SECONDS.toNANOS(90);
+    private static final long SCREEN_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(90);
     private static final long WORLD_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(180);
     private static final long DISCONNECT_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(45);
     private static final long POLL_MILLIS = 200L;
@@ -297,8 +297,8 @@ final class TestWorldBootstrapDriver {
                     }
 
                     LevelChunk candidate = chunks.getChunk(
-                            playerChunkPos.x + dx,
-                            playerChunkPos.z + dz,
+                            playerChunkPos.x() + dx,
+                            playerChunkPos.z() + dz,
                             ChunkStatus.FULL,
                             false);
                     if (candidate == null) {
