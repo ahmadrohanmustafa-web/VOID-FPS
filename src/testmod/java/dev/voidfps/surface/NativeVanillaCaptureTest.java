@@ -94,14 +94,14 @@ final class NativeVanillaCaptureTest {
                 Blocks.PUMPKIN.defaultBlockState(),
                 Blocks.BOOKSHELF.defaultBlockState(),
                 Blocks.TNT.defaultBlockState(),
-                // Property-driven model variants: rotated hay textures and horizontal pumpkin facing.
+                // Property-driven model variants: rotated hay textures and horizontal carved-pumpkin facing.
                 Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X),
                 Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Y),
                 Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z),
-                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
-                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH),
-                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.WEST),
-                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.EAST)
+                Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
+                Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH),
+                Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.WEST),
+                Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.EAST)
         };
 
         for (int index = 0; index < states.length; index++) {
