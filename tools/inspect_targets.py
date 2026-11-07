@@ -68,6 +68,12 @@ TARGET_SIMPLE_NAMES = [
     "PathPackResources",
     "FilePackResources",
     "PreparableReloadListener",
+    "Pack",
+    "PackLocationInfo",
+    "PackMetadataSection",
+    "FolderRepositorySource",
+    "PackType",
+    "Identifier",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -86,6 +92,12 @@ EXACT_CLASSES = {
     "VoxelShape": "net/minecraft/world/phys/shapes/VoxelShape.class",
     "BlockPos": "net/minecraft/core/BlockPos.class",
     "Vec3": "net/minecraft/world/phys/Vec3.class",
+    "Pack": "net/minecraft/server/packs/repository/Pack.class",
+    "PackLocationInfo": "net/minecraft/server/packs/PackLocationInfo.class",
+    "PackMetadataSection": "net/minecraft/server/packs/metadata/pack/PackMetadataSection.class",
+    "FolderRepositorySource": "net/minecraft/server/packs/repository/FolderRepositorySource.class",
+    "PackType": "net/minecraft/server/packs/PackType.class",
+    "Identifier": "net/minecraft/resources/Identifier.class",
 }
 
 # Lines in javap output that are worth highlighting in summary.md.
@@ -105,7 +117,9 @@ BYTECODE_CLASSES = [
     "Shapes", "VoxelShape", "BlockPos", "Vec3",
     "Minecraft", "ModelManager", "BlockStateModelLoader", "ReloadableResourceManager",
     "ResourceManager", "Resource", "PackRepository", "PackResources",
-    "PathPackResources", "FilePackResources", "PreparableReloadListener"
+    "PathPackResources", "FilePackResources", "PreparableReloadListener",
+    "Pack", "PackLocationInfo", "PackMetadataSection", "FolderRepositorySource",
+    "PackType", "Identifier"
 ]
 
 
