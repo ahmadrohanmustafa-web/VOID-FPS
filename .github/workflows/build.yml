@@ -44,7 +44,7 @@ jobs:
           grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log
           grep -q "VOID FPS native putBlockBakedQuad UV and emission test passed" build/void-fps-client-smoke.log
           grep -q "VOID FPS resource-loaded stone model snapshot passed" build/void-fps-client-smoke.log
-          grep -q "VOID FPS native eligibility matrix passed: accepted=6, tintedFallback=grass_block" build/void-fps-client-smoke.log
+          grep -q "VOID FPS native eligibility matrix passed: accepted=10, tintedFallback=grass_block" build/void-fps-client-smoke.log
           grep -q "VOID FPS native fallback matrix passed: modelChecks=5, rejected=6, vanillaFallbackRequired=true" build/void-fps-client-smoke.log
           grep -Fq 'VOID FPS native fallback model inspection passed: block=Block{minecraft:oak_slab},' build/void-fps-client-smoke.log
           grep -Fq 'VOID FPS native fallback model inspection passed: block=Block{minecraft:oak_fence},' build/void-fps-client-smoke.log
