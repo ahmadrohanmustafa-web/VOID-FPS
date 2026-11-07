@@ -61,6 +61,10 @@ public final class SurfaceEligibility {
         if (snapshot == null || snapshot.isEmpty()) {
             return new NativeGeometryAnalysis(false, "native model has no selected parts");
         }
+        if (!snapshot.hasConsistentAmbientOcclusion()) {
+            return new NativeGeometryAnalysis(false,
+                    "native model parts disagree on ambient-occlusion settings");
+        }
         if (!snapshot.hasExactlyOneUnitBoundaryQuadPerFace()) {
             return new NativeGeometryAnalysis(false,
                     "native model is not exactly one unit boundary quad per face");
