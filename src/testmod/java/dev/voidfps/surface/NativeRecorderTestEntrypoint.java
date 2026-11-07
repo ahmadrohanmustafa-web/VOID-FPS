@@ -230,7 +230,12 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 Blocks.OBSIDIAN.defaultBlockState(),
                 Blocks.NETHERRACK.defaultBlockState(),
                 Blocks.QUARTZ_BLOCK.defaultBlockState(),
-                Blocks.MOSS_BLOCK.defaultBlockState()
+                Blocks.MOSS_BLOCK.defaultBlockState(),
+                // Full-cube models with deliberately different face textures/orientation.
+                Blocks.HAY_BLOCK.defaultBlockState(),
+                Blocks.PUMPKIN.defaultBlockState(),
+                Blocks.BOOKSHELF.defaultBlockState(),
+                Blocks.TNT.defaultBlockState()
         };
 
         int accepted = 0;
