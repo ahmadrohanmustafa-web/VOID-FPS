@@ -82,7 +82,14 @@ jobs:
             net.minecraft.client.gui.Gui
             net.minecraft.client.server.IntegratedServer
             net.minecraft.client.multiplayer.ClientChunkCache
+            net.minecraft.client.multiplayer.ClientLevel
             net.minecraft.world.level.chunk.LevelChunk
+            net.minecraft.world.level.chunk.ChunkAccess
+            net.minecraft.world.level.chunk.status.ChunkStatus
+            net.minecraft.client.gui.components.events.AbstractContainerEventHandler
+            net.minecraft.client.gui.components.events.GuiEventListener
+            net.minecraft.client.gui.components.AbstractButton
+            net.minecraft.client.gui.components.Button
             net.minecraft.network.chat.Component
             net.minecraft.network.chat.contents.TranslatableContents
             com.mojang.blaze3d.platform.Window
