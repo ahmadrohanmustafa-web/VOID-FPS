@@ -185,10 +185,14 @@ final class TestWorldBootstrapDriver {
         }
 
         MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(0, 0));
-        if (!screen.mouseClicked(click, false)) {
-            throw new IllegalStateException("Vanilla Screen.mouseClicked did not consume " + label + " click");
-        }
+        // Keep vanilla coordinate hit-testing above, but invoke the resolved
+        // vanilla AbstractButton callback directly. In the headless client,
+        // Screen.mouseClicked can consume the event without reaching the
+        // widget's onPress callback, which left onboarding's fade timer unset.
+        button.onClick(click, false);
         clickDispatched = true;
+        System.out.println("VOID FPS vanilla " + label
+                + " button callback invoked after verified screen hit-testing");
     }
 
     private void waitForWorld() {
