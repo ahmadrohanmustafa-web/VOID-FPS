@@ -315,3 +315,37 @@ The test run must continue to use its isolated `run/test-client` directory;
 production entrypoints and the published JAR remain unchanged.
 
 No production rendering changes or FPS claims follow from these API findings.
+
+
+## Build #249: GUI coordinate semantics verified
+
+Build #249 passed. The corrected bytecode inspection targets
+`com.mojang.blaze3d.platform.Window` (the actual Minecraft window class) and
+`net.minecraft.client.MouseHandler`.
+
+Verified APIs and behavior:
+
+- `Window.getGuiScaledWidth()` and `getGuiScaledHeight()` expose the
+  screen's GUI-scaled dimensions.
+- `Window.getScreenWidth()` and `getScreenHeight()` expose window screen
+  dimensions; `getWidth()` / `getHeight()` instead return framebuffer
+  dimensions.
+- Vanilla `MouseHandler` converts physical mouse positions into GUI
+  coordinates before constructing `MouseButtonEvent`. The conversion is
+  `physicalX * guiScaledWidth / screenWidth` and
+  `physicalY * guiScaledHeight / screenHeight`.
+- The event is then dispatched to the current `Screen.mouseClicked(...)`.
+  This confirms that widget coordinates and manually constructed
+  `MouseButtonEvent` coordinates must both be GUI-scaled coordinates.
+- `Component.getContents()` is the public content accessor, and
+  `TranslatableContents.getKey()` is the public stable translation-key
+  accessor. The Create button identity check can use
+  `getMessage().getContents() instanceof TranslatableContents` followed by
+  `getKey().equals("selectWorld.create")`.
+
+Driver safety requirements remain unchanged: verify the current screen is the
+expected CreateWorldScreen, exactly one visible/active Create button matches,
+the button center hit-tests to that same child, and dispatch a primary click
+through the screen. Wait for the asynchronous world-creation screen to be
+ready; fail closed on unexpected screens. This is API verification only:
+Build #249 did not create a world or validate chunk/lighting fixtures.
