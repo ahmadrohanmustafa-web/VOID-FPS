@@ -349,3 +349,37 @@ the button center hit-tests to that same child, and dispatch a primary click
 through the screen. Wait for the asynchronous world-creation screen to be
 ready; fail closed on unexpected screens. This is API verification only:
 Build #249 did not create a world or validate chunk/lighting fixtures.
+
+
+## Build #249 follow-up: test-world screen readiness and creation callback
+
+Further inspection of the same Build #249 artifact confirms:
+
+- `CreateWorldScreen.testWorld(minecraft, callback)` queues Minecraft's
+  "preparing world data" loading screen, loads the required datapack/registry
+  context, and only then installs the `CreateWorldScreen` on the client's
+  GUI. The screen is not ready merely because `testWorld(...)` was called.
+- The screen's `init()` builds its widgets; the driver must wait until the
+  expected screen is current and the widget list has been initialized before
+  searching for the Create button.
+- The Create button's callback reaches private `onCreate()`, which constructs
+  the normal world settings and passes them through
+  `WorldOpenFlows.confirmWorldCreation(...)`.
+- The built-in test-world callback ultimately invokes the screen's
+  `createNewWorld(...)` path. This uses the normal save creation and
+  integrated-server startup flow; do not replace it with a fabricated
+  `ClientLevel` or manually injected chunks.
+- The built-in test-world flow uses the test-world preset/dimensions and a
+  random test-world seed. It is a dedicated Minecraft test flow, not a normal
+  user save.
+
+The remaining implementation work is a test-only state machine: request the
+test-world flow once; wait with a deadline for the expected screen and unique
+Create widget; validate visibility, active state, and hit-test identity; send
+the vanilla primary-button event; then wait for the integrated server, client
+level, and real loaded chunks. Any unexpected screen or timeout must fail the
+test and shut down cleanly. The disposable test client directory remains
+isolated at `run/test-client`.
+
+No real test world has yet been opened by CI, and no native section-region
+fixture has yet been built from live chunks.
