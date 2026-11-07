@@ -2,14 +2,16 @@ package dev.voidfps.surface;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
-import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -21,9 +23,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Test-only integration driver. It uses the vanilla Create World screen and
- * vanilla GUI hit-testing, then verifies a real integrated server and FULL
- * client chunk before disconnecting through Minecraft's normal save path.
+ * Test-only integration driver. It completes Minecraft's first-run
+ * accessibility onboarding through vanilla GUI hit-testing, then uses the
+ * vanilla Create World screen and verifies a real FULL client chunk.
  */
 final class TestWorldBootstrapDriver {
     private static final long SCREEN_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(90);
@@ -32,6 +34,8 @@ final class TestWorldBootstrapDriver {
     private static final long POLL_MILLIS = 200L;
 
     private enum Phase {
+        WAITING_FOR_INITIAL_SCREEN,
+        WAITING_FOR_ONBOARDING_EXIT,
         WAITING_FOR_CREATE_SCREEN,
         WAITING_FOR_WORLD,
         WAITING_FOR_FULL_CHUNK,
@@ -39,9 +43,8 @@ final class TestWorldBootstrapDriver {
     }
 
     private final Minecraft minecraft;
-    private final long startedAt = System.nanoTime();
-    private Phase phase = Phase.WAITING_FOR_CREATE_SCREEN;
-    private long phaseStartedAt = startedAt;
+    private Phase phase = Phase.WAITING_FOR_INITIAL_SCREEN;
+    private long phaseStartedAt = System.nanoTime();
     private boolean clickDispatched;
 
     private TestWorldBootstrapDriver(Minecraft minecraft) {
@@ -49,9 +52,7 @@ final class TestWorldBootstrapDriver {
     }
 
     static void start(Minecraft minecraft) {
-        System.out.println("VOID FPS test-world bootstrap starting through vanilla Create World UI");
-        CreateWorldScreen.testWorld(minecraft, () ->
-                System.out.println("VOID FPS test-world Create World screen closed"));
+        System.out.println("VOID FPS test-world bootstrap waiting for first-run UI");
         new TestWorldBootstrapDriver(minecraft).scheduleNext();
     }
 
@@ -68,6 +69,8 @@ final class TestWorldBootstrapDriver {
 
     private void tick() {
         switch (phase) {
+            case WAITING_FOR_INITIAL_SCREEN -> waitForInitialScreen();
+            case WAITING_FOR_ONBOARDING_EXIT -> waitForOnboardingExit();
             case WAITING_FOR_CREATE_SCREEN -> waitForCreateScreen();
             case WAITING_FOR_WORLD -> waitForWorld();
             case WAITING_FOR_FULL_CHUNK -> waitForFullChunk();
@@ -75,10 +78,52 @@ final class TestWorldBootstrapDriver {
         }
     }
 
+    private void waitForInitialScreen() {
+        Screen current = minecraft.gui.screen();
+        if (current instanceof AccessibilityOnboardingScreen onboarding) {
+            dispatchButtonClick(onboarding, CommonComponents.GUI_CONTINUE, "accessibility Continue");
+            phase = Phase.WAITING_FOR_ONBOARDING_EXIT;
+            phaseStartedAt = System.nanoTime();
+            System.out.println("VOID FPS first-run accessibility Continue click dispatched through Screen.mouseClicked");
+            scheduleNext();
+            return;
+        }
+        if (current != null) {
+            beginCreateWorldFlow();
+            return;
+        }
+        if (expired(SCREEN_TIMEOUT_NANOS)) {
+            throw new IllegalStateException("Timed out waiting for initial Minecraft screen");
+        }
+        scheduleNext();
+    }
+
+    private void waitForOnboardingExit() {
+        Screen current = minecraft.gui.screen();
+        if (!(current instanceof AccessibilityOnboardingScreen)) {
+            System.out.println("VOID FPS first-run accessibility onboarding closed through vanilla UI");
+            beginCreateWorldFlow();
+            return;
+        }
+        if (expired(SCREEN_TIMEOUT_NANOS)) {
+            throw new IllegalStateException("Timed out waiting for accessibility onboarding fade/close");
+        }
+        scheduleNext();
+    }
+
+    private void beginCreateWorldFlow() {
+        phase = Phase.WAITING_FOR_CREATE_SCREEN;
+        phaseStartedAt = System.nanoTime();
+        CreateWorldScreen.testWorld(minecraft, () ->
+                System.out.println("VOID FPS test-world Create World screen closed"));
+        System.out.println("VOID FPS vanilla test-world flow requested after onboarding");
+        scheduleNext();
+    }
+
     private void waitForCreateScreen() {
         Screen current = minecraft.gui.screen();
         if (current instanceof CreateWorldScreen createScreen) {
-            dispatchVanillaCreateClick(createScreen);
+            dispatchCreateClick(createScreen);
             phase = Phase.WAITING_FOR_WORLD;
             phaseStartedAt = System.nanoTime();
             scheduleNext();
@@ -92,13 +137,11 @@ final class TestWorldBootstrapDriver {
         scheduleNext();
     }
 
-    private void dispatchVanillaCreateClick(CreateWorldScreen screen) {
+    private void dispatchCreateClick(CreateWorldScreen screen) {
         List<Button> matches = new ArrayList<>();
         for (var child : screen.children()) {
-            if (!(child instanceof Button button)) {
-                continue;
-            }
-            if (button.getMessage().getContents() instanceof TranslatableContents translated
+            if (child instanceof Button button
+                    && button.getMessage().getContents() instanceof TranslatableContents translated
                     && "selectWorld.create".equals(translated.getKey())) {
                 matches.add(button);
             }
@@ -108,27 +151,27 @@ final class TestWorldBootstrapDriver {
             throw new IllegalStateException(
                     "Expected exactly one vanilla selectWorld.create button, found " + matches.size());
         }
+        dispatchButtonClick(screen, matches.get(0), "vanilla Create");
+    }
 
-        Button createButton = matches.get(0);
-        if (!createButton.isActive()) {
-            throw new IllegalStateException("Vanilla Create button is not active");
+    private void dispatchButtonClick(Screen screen, Button button, String label) {
+        if (!button.isActive() || !button.visible) {
+            throw new IllegalStateException(label + " button is not active and visible");
         }
 
-        double x = createButton.getX() + createButton.getWidth() / 2.0;
-        double y = createButton.getY() + createButton.getHeight() / 2.0;
+        double x = button.getX() + button.getWidth() / 2.0;
+        double y = button.getY() + button.getHeight() / 2.0;
         var hit = screen.getChildAt(x, y).orElse(null);
-        if (hit != createButton) {
+        if (hit != button) {
             throw new IllegalStateException(
-                    "Vanilla screen hit-testing did not resolve the Create button at its center");
+                    "Vanilla screen hit-testing did not resolve " + label + " button at its center");
         }
 
         MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(0, 0));
         if (!screen.mouseClicked(click, false)) {
-            throw new IllegalStateException("Vanilla Screen.mouseClicked did not consume the Create click");
+            throw new IllegalStateException("Vanilla Screen.mouseClicked did not consume " + label + " click");
         }
-
         clickDispatched = true;
-        System.out.println("VOID FPS vanilla Create button click dispatched through Screen.mouseClicked");
     }
 
     private void waitForWorld() {
