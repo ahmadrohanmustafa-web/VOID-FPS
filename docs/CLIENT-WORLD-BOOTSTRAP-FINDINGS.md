@@ -398,3 +398,17 @@ Build #252 passed. Its vanilla bytecode artifact confirms these Minecraft 26.3 A
 - `IntegratedServer.stopServer()` is present, but the test driver should prefer the normal client disconnect/exit lifecycle rather than calling internal server shutdown directly while the client is connected.
 
 These signatures establish the inspection surface, not yet a successful world-creation test. The driver must still verify screen transition, integrated-server startup, non-null client level, and a genuinely loaded full chunk before reporting success. It must time out and fail closed on unexpected confirmation screens or missing state.
+
+
+## Build #254 — loaded chunk verification details
+
+Build #254 passed and its bytecode artifact confirms:
+
+- `ClientChunkCache.getChunk(x, z, status, false)` returns the currently stored chunk or `null`; passing `false` is essential because `true` returns the cache's shared empty-chunk fallback when the requested position is not loaded. The driver must use `false` and reject null.
+- `ClientChunkCache.getLoadedChunksCount()` reads the actual client chunk-storage count. It is useful as a secondary readiness signal, but a positive count alone is not sufficient evidence for the specific chunk under inspection.
+- `ChunkAccess.getSections()` and `getSection(index)` expose the real section array. `LevelChunkSection.hasOnlyAir()` can establish that at least one loaded section contains block data; do not treat an all-air section as a failure if the selected chunk legitimately contains empty vertical sections.
+- `ChunkAccess.getPos()` returns the chunk's actual position. The driver should verify it matches the requested coordinates before recording success.
+- `Minecraft.disconnectWithSavingScreen()` is available as the normal save-and-disconnect path. The automated test should invoke the client lifecycle on the game thread and wait for the level/server to clear before calling the final client stop; it should not call `IntegratedServer.stopServer()` directly.
+- Vanilla screen event dispatch is available through `ContainerEventHandler.getChildAt(x,y)` and `mouseClicked(event,doubleClick)`. The Create button can be checked against the exact hit-tested child before dispatching the event.
+
+The test harness currently still shuts down immediately after the stone-model assertions. No world-bootstrap driver has been added yet. Next implementation must be isolated in `src/testmod`, preserve the existing native recorder and stone checks, and add bounded state transitions for screen readiness, click dispatch, world startup, real chunk evidence, and orderly disconnect.
