@@ -85,6 +85,12 @@ TARGET_SIMPLE_NAMES = [
     "Pack$ResourcesSupplier",
     "Pack$Metadata",
     "BlockStateModelSet",
+    # Exact format/compatibility and world-version types for pack.mcmeta validation.
+    "DirectoryValidator",
+    "PackCompatibility",
+    "WorldVersion",
+    "SharedConstants",
+    "Pack$Position",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -119,6 +125,11 @@ EXACT_CLASSES = {
     "Pack$ResourcesSupplier": "net/minecraft/server/packs/repository/Pack$ResourcesSupplier.class",
     "Pack$Metadata": "net/minecraft/server/packs/repository/Pack$Metadata.class",
     "BlockStateModelSet": "net/minecraft/client/renderer/block/BlockStateModelSet.class",
+    "DirectoryValidator": "net/minecraft/world/level/validation/DirectoryValidator.class",
+    "PackCompatibility": "net/minecraft/server/packs/repository/PackCompatibility.class",
+    "WorldVersion": "net/minecraft/WorldVersion.class",
+    "SharedConstants": "net/minecraft/SharedConstants.class",
+    "Pack$Position": "net/minecraft/server/packs/repository/Pack$Position.class",
 }
 
 # Lines in javap output that are worth highlighting in summary.md.
@@ -143,7 +154,8 @@ BYTECODE_CLASSES = [
     "PackType", "Identifier", "PackSelectionConfig", "PackSource",
     "PackMetadataResources", "AbstractPackMetadataResources", "PackFormat",
     "InclusiveRange", "KnownPack", "Pack$ResourcesSupplier", "Pack$Metadata",
-    "BlockStateModelSet"
+    "BlockStateModelSet", "DirectoryValidator", "PackCompatibility",
+    "WorldVersion", "SharedConstants", "Pack$Position"
 ]
 
 
