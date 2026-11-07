@@ -58,6 +58,49 @@ final class NativeVanillaCaptureTest {
                 + ", quads=" + first.quads().size()
                 + ", vertices=" + first.vertices().size()
                 + ", repeatedCaptureExact=true");
+
+        verifyNativeWorldFaceCulling(level, pos, state, model, seed);
+    }
+
+    /**
+     * Exercises Minecraft's real world-neighbour culling through ModelBlockRenderer.
+     * Each temporary adjacent stone must hide exactly the matching face of the fixture.
+     */
+    private static void verifyNativeWorldFaceCulling(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbourPos = pos.relative(direction);
+            BlockState previous = level.getBlockState(neighbourPos);
+            try {
+                if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
+                        || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                    throw new IllegalStateException(
+                            "Could not place temporary neighbour for native culling test on " + direction);
+                }
+
+                Capture withNeighbour = capture(level, pos, state, model, seed);
+                boolean hiddenFaceStillPresent = withNeighbour.quads().stream()
+                        .anyMatch(quad -> quad.direction() == direction);
+                if (withNeighbour.quads().size() != 5 || hiddenFaceStillPresent) {
+                    throw new IllegalStateException(
+                            "Native world culling mismatch on " + direction
+                                    + ": quads=" + withNeighbour.quads().size()
+                                    + ", hiddenFaceStillPresent=" + hiddenFaceStillPresent);
+                }
+                System.out.println("VOID FPS real-world native face culling passed: covered="
+                        + direction + ", emittedQuads=5");
+            } finally {
+                if (!level.setBlock(neighbourPos, previous, 3)
+                        || !level.getBlockState(neighbourPos).equals(previous)) {
+                    throw new IllegalStateException(
+                            "Could not restore temporary neighbour after culling test at " + neighbourPos);
+                }
+            }
+        }
     }
 
     private static Capture capture(
