@@ -3,6 +3,12 @@ package dev.voidfps.surface;
 import com.mojang.blaze3d.vertex.QuadInstance;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.renderer.chunk.RenderSectionRegion;
+import net.minecraft.client.renderer.chunk.SectionCopy;
+
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.client.renderer.block.BlockModelLighter;
 import net.minecraft.client.renderer.block.BlockQuadOutput;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
@@ -63,6 +69,7 @@ final class NativeVanillaCaptureTest {
         verifyCandidateFaceSelection(level, pos, state, model, seed, first.quads());
         verifyNativeWorldFaceCulling(level, pos, state, model, seed);
         verifyAdditionalFullCubeModels(level, pos);
+        verifySectionRegionVertexParity(level, pos, state, model, seed);
     }
 
     /**
@@ -265,13 +272,76 @@ final class NativeVanillaCaptureTest {
     }
 
     /**
+     * Builds the real 3x3x3 RenderSectionRegion from copied sections of loaded FULL chunks.
+     * The region's block-state reads must match the live level for the fixture and its six
+     * neighbours; native lighting and tint remain intentionally live-level dependencies.
+     */
+    private static void verifySectionRegionVertexParity(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        int centerSectionX = pos.getX() >> 4;
+        int centerSectionY = pos.getY() >> 4;
+        int centerSectionZ = pos.getZ() >> 4;
+        int minSectionX = centerSectionX - 1;
+        int minSectionY = centerSectionY - 1;
+        int minSectionZ = centerSectionZ - 1;
+        int minWorldSectionY = level.getMinY() >> 4;
+        SectionCopy[] sections = new SectionCopy[27];
+
+        for (int dz = 0; dz < 3; dz++) {
+            for (int dy = 0; dy < 3; dy++) {
+                for (int dx = 0; dx < 3; dx++) {
+                    int sectionX = minSectionX + dx;
+                    int sectionY = minSectionY + dy;
+                    int sectionZ = minSectionZ + dz;
+                    LevelChunk chunk = level.getChunkSource().getChunk(
+                            sectionX, sectionZ, ChunkStatus.FULL, false);
+                    if (chunk == null) {
+                        throw new IllegalStateException(
+                                "Missing loaded FULL chunk for section-region fixture at "
+                                        + sectionX + "," + sectionZ);
+                    }
+                    int sectionIndex = sectionY - minWorldSectionY;
+                    sections[dx + dy * 3 + dz * 9] = new SectionCopy(chunk, sectionIndex);
+                }
+            }
+        }
+
+        RenderSectionRegion region = new RenderSectionRegion(
+                level, minSectionX, minSectionY, minSectionZ, sections);
+        if (!region.getBlockState(pos).equals(state)) {
+            throw new IllegalStateException(
+                    "Section-region center state differs from live ClientLevel at " + pos
+                            + ": region=" + region.getBlockState(pos)
+                            + ", live=" + state);
+        }
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbourPos = pos.relative(direction);
+            BlockState liveNeighbour = level.getBlockState(neighbourPos);
+            BlockState regionNeighbour = region.getBlockState(neighbourPos);
+            if (!regionNeighbour.equals(liveNeighbour)) {
+                throw new IllegalStateException(
+                        "Section-region neighbour differs from live ClientLevel on " + direction
+                                + ": region=" + regionNeighbour + ", live=" + liveNeighbour);
+            }
+        }
+
+        verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
+        System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
+                + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
+    }
+
+    /**
      * Runs the independent candidate emitter against vanilla inside one native lighter-cache
      * scope. Both paths receive the same live ClientLevel, state, position, selected model,
      * seed, and thread-local BlockModelLighter cache. The current eligible set excludes tint,
      * offset functions, unculled quads, and non-solid/emissive materials.
      */
     private static void verifyCandidateVertexOutput(
-            ClientLevel level,
+            BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
             BlockStateModel model,
@@ -307,7 +377,7 @@ final class NativeVanillaCaptureTest {
      * AO or flat data, and forwards the original baked quads to the native packed-vertex path.
      */
     private static Capture captureCandidate(
-            ClientLevel level,
+            BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
             BlockStateModel model,
@@ -378,7 +448,7 @@ final class NativeVanillaCaptureTest {
     }
 
     private static Capture capture(
-            ClientLevel level,
+            BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
             BlockStateModel model,
