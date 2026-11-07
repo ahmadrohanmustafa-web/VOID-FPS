@@ -124,28 +124,43 @@ final class NativeVanillaCaptureTest {
                 if (model == null) {
                     throw new IllegalStateException("No resource-loaded model for " + state);
                 }
-                long seed = state.getSeed(fixture);
-                NativeModelSnapshot.Snapshot snapshot =
-                        NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
-                SurfaceEligibility.NativeGeometryAnalysis eligibility =
-                        SurfaceEligibility.analyzeNativeModel(state, snapshot);
-                if (!eligibility.supported()) {
-                    throw new IllegalStateException(
-                            "Expected ordinary full-cube fixture to pass native eligibility: "
-                                    + state + " rejected because " + eligibility.rejectReason());
-                }
+                long vanillaSeed = state.getSeed(fixture);
+                // Exercise native model-part selection under several deterministic seeds.
+                // The first is Minecraft's real position-derived seed; the others probe
+                // alternate selected-part combinations without changing world state.
+                long[] modelSeeds = {
+                        vanillaSeed,
+                        0x564F494446505300L + index,
+                        0x9E3779B97F4A7C15L ^ (index * 0x100000001B3L),
+                        0x6A09E667F3BCC909L + (index * 31L)
+                };
+                for (int seedIndex = 0; seedIndex < modelSeeds.length; seedIndex++) {
+                    long seed = modelSeeds[seedIndex];
+                    NativeModelSnapshot.Snapshot snapshot =
+                            NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
+                    SurfaceEligibility.NativeGeometryAnalysis eligibility =
+                            SurfaceEligibility.analyzeNativeModel(state, snapshot);
+                    if (!eligibility.supported()) {
+                        throw new IllegalStateException(
+                                "Expected ordinary full-cube fixture to pass native eligibility: "
+                                        + state + " seedIndex=" + seedIndex
+                                        + " rejected because " + eligibility.rejectReason());
+                    }
 
-                Capture vanilla = capture(level, fixture, state, model, seed);
-                if (vanilla.quads().size() != 6 || vanilla.vertices().size() != 24) {
-                    throw new IllegalStateException(
-                            "Unexpected vanilla full-cube output for " + state
-                                    + ": quads=" + vanilla.quads().size()
-                                    + ", vertices=" + vanilla.vertices().size());
+                    Capture vanilla = capture(level, fixture, state, model, seed);
+                    if (vanilla.quads().size() != 6 || vanilla.vertices().size() != 24) {
+                        throw new IllegalStateException(
+                                "Unexpected vanilla full-cube output for " + state
+                                        + " seedIndex=" + seedIndex
+                                        + ": quads=" + vanilla.quads().size()
+                                        + ", vertices=" + vanilla.vertices().size());
+                    }
+                    verifyCandidateFaceSelection(level, fixture, state, model, seed, vanilla.quads());
                 }
-                verifyCandidateFaceSelection(level, fixture, state, model, seed, vanilla.quads());
-                verifyNativeWorldFaceCulling(level, fixture, state, model, seed);
+                verifyNativeWorldFaceCulling(level, fixture, state, model, vanillaSeed);
                 System.out.println("VOID FPS additional full-cube native parity passed: block="
-                        + state.getBlock() + ", quads=6, vertices=24, eligibility=accepted");
+                        + state.getBlock() + ", quads=6, vertices=24, eligibility=accepted"
+                        + ", deterministicSeeds=" + modelSeeds.length);
             } finally {
                 for (var entry : previousStates.entrySet()) {
                     level.setBlock(entry.getKey(), entry.getValue(), 3);
