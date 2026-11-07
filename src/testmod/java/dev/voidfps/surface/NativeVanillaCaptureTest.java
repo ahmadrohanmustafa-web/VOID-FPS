@@ -88,14 +88,14 @@ final class NativeVanillaCaptureTest {
             try {
                 for (Direction direction : Direction.values()) {
                     BlockPos neighbour = fixture.relative(direction);
-                    if (!level.setBlock(neighbour, Blocks.AIR.defaultBlockState(), 3)
-                            || !level.getBlockState(neighbour).isAir()) {
+                    level.setBlock(neighbour, Blocks.AIR.defaultBlockState(), 3);
+                    if (!level.getBlockState(neighbour).isAir()) {
                         throw new IllegalStateException(
                                 "Could not clear additional-model fixture neighbour " + neighbour);
                     }
                 }
-                if (!level.setBlock(fixture, state, 3)
-                        || !level.getBlockState(fixture).equals(state)) {
+                level.setBlock(fixture, state, 3);
+                if (!level.getBlockState(fixture).equals(state)) {
                     throw new IllegalStateException(
                             "Could not place additional full-cube fixture " + state + " at " + fixture);
                 }
@@ -129,8 +129,8 @@ final class NativeVanillaCaptureTest {
                         + state.getBlock() + ", quads=6, vertices=24, eligibility=accepted");
             } finally {
                 for (var entry : previousStates.entrySet()) {
-                    if (!level.setBlock(entry.getKey(), entry.getValue(), 3)
-                            || !level.getBlockState(entry.getKey()).equals(entry.getValue())) {
+                    level.setBlock(entry.getKey(), entry.getValue(), 3);
+                    if (!level.getBlockState(entry.getKey()).equals(entry.getValue())) {
                         throw new IllegalStateException(
                                 "Could not restore additional-model fixture block at " + entry.getKey());
                     }
