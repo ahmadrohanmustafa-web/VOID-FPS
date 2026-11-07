@@ -16,6 +16,8 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
@@ -91,7 +93,15 @@ final class NativeVanillaCaptureTest {
                 Blocks.HAY_BLOCK.defaultBlockState(),
                 Blocks.PUMPKIN.defaultBlockState(),
                 Blocks.BOOKSHELF.defaultBlockState(),
-                Blocks.TNT.defaultBlockState()
+                Blocks.TNT.defaultBlockState(),
+                // Property-driven model variants: rotated hay textures and horizontal pumpkin facing.
+                Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X),
+                Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Y),
+                Blocks.HAY_BLOCK.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z),
+                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
+                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH),
+                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.WEST),
+                Blocks.PUMPKIN.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.EAST)
         };
 
         for (int index = 0; index < states.length; index++) {
@@ -158,8 +168,8 @@ final class NativeVanillaCaptureTest {
                     verifyCandidateFaceSelection(level, fixture, state, model, seed, vanilla.quads());
                 }
                 verifyNativeWorldFaceCulling(level, fixture, state, model, vanillaSeed);
-                System.out.println("VOID FPS additional full-cube native parity passed: block="
-                        + state.getBlock() + ", quads=6, vertices=24, eligibility=accepted"
+                System.out.println("VOID FPS additional full-cube native parity passed: state="
+                        + state + ", quads=6, vertices=24, eligibility=accepted"
                         + ", deterministicSeeds=" + modelSeeds.length);
             } finally {
                 for (var entry : previousStates.entrySet()) {
