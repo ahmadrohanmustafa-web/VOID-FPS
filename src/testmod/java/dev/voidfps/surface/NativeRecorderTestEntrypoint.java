@@ -203,7 +203,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 "block state emits light");
 
         verifyNativeEligibilityMatrix(modelSet);
-        verifyNativeFallbackMatrix();
+        verifyNativeFallbackMatrix(modelSet);
         verifyVanillaStoneFaceCulling();
 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
@@ -279,32 +279,59 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
      * These models must stay on vanilla's renderer; this test only checks the
      * conservative gate and never attempts to emit candidate geometry for them.
      */
-    private static void verifyNativeFallbackMatrix() {
-        net.minecraft.world.level.block.state.BlockState[] rejectedStates = {
+    private static void verifyNativeFallbackMatrix(BlockStateModelSet modelSet) {
+        net.minecraft.world.level.block.state.BlockState[] modelStates = {
                 Blocks.OAK_SLAB.defaultBlockState(),
                 Blocks.OAK_FENCE.defaultBlockState(),
                 Blocks.GLASS_PANE.defaultBlockState(),
                 Blocks.OAK_LEAVES.defaultBlockState(),
-                Blocks.TORCH.defaultBlockState(),
-                Blocks.WATER.defaultBlockState()
+                Blocks.TORCH.defaultBlockState()
         };
 
-        int rejected = 0;
-        for (var state : rejectedStates) {
+        int modelChecks = 0;
+        for (var state : modelStates) {
+            var model = modelSet.get(state);
+            if (model == null) {
+                throw new IllegalStateException(
+                        "Missing resource-loaded model for non-cube fallback fixture " + state);
+            }
+            NativeModelSnapshot.Snapshot snapshot = NativeModelSnapshot.collect(
+                    model, RandomSource.create(0x564F494446414C4CL + modelChecks));
+            boolean fullCubeGeometry = snapshot.hasExactlyOneUnitBoundaryQuadPerFace();
+            boolean plainSolidMaterial = snapshot.hasOnlyPlainSolidUntintedMaterials();
+            if (fullCubeGeometry && plainSolidMaterial) {
+                throw new IllegalStateException(
+                        "Non-cube fallback model passed both native geometry and material prechecks: "
+                                + state);
+            }
+
             SurfaceEligibility.NativeGeometryAnalysis result =
-                    SurfaceEligibility.analyzeNativeModel(state, null);
+                    SurfaceEligibility.analyzeNativeModel(state, snapshot);
             if (result.supported() || result.rejectReason() == null || result.rejectReason().isBlank()) {
                 throw new IllegalStateException(
                         "Unsafe fallback fixture unexpectedly passed native eligibility: " + state
                                 + ", result=" + result);
             }
-            rejected++;
-            System.out.println("VOID FPS native fallback matrix rejected: block="
-                    + state.getBlock() + ", reason=" + result.rejectReason());
+            modelChecks++;
+            System.out.println("VOID FPS native fallback model inspection passed: block="
+                    + state.getBlock() + ", fullCubeGeometry=" + fullCubeGeometry
+                    + ", plainSolidMaterial=" + plainSolidMaterial
+                    + ", eligibilityRejected=true");
         }
 
-        System.out.println("VOID FPS native fallback matrix passed: rejected="
-                + rejected + ", vanillaFallbackRequired=true");
+        // Water is rendered through the fluid pipeline rather than a normal solid block model.
+        // Confirm that its state is rejected before a model snapshot is needed.
+        var water = Blocks.WATER.defaultBlockState();
+        SurfaceEligibility.NativeGeometryAnalysis waterResult =
+                SurfaceEligibility.analyzeNativeModel(water, null);
+        if (waterResult.supported() || waterResult.rejectReason() == null
+                || waterResult.rejectReason().isBlank()) {
+            throw new IllegalStateException(
+                    "Water unexpectedly passed native block-model eligibility: " + waterResult);
+        }
+
+        System.out.println("VOID FPS native fallback matrix passed: modelChecks="
+                + modelChecks + ", rejected=6, vanillaFallbackRequired=true");
     }
 
     private static void assertNativeEligibilityRejected(
