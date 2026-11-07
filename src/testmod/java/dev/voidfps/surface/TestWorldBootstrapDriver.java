@@ -197,9 +197,26 @@ final class TestWorldBootstrapDriver {
 
     private void waitForWorld() {
         Screen current = minecraft.gui.screen();
-        if (current instanceof ConfirmScreen) {
-            throw new IllegalStateException(
-                    "Unexpected confirmation screen appeared during automated world creation");
+        if (current instanceof ConfirmScreen confirmation) {
+            var title = confirmation.getTitle().getContents();
+            if (!(title instanceof TranslatableContents translated)
+                    || !("selectWorld.warning.experimental.title".equals(translated.getKey())
+                    || "selectWorld.warning.deprecated.title".equals(translated.getKey()))) {
+                throw new IllegalStateException(
+                        "Unexpected confirmation screen during automated world creation: "
+                                + confirmation.getTitle().getString());
+            }
+
+            Button yesButton = findButton(confirmation, CommonComponents.GUI_YES);
+            if (yesButton == null) {
+                throw new IllegalStateException(
+                        "Expected vanilla Yes button on world-creation lifecycle confirmation");
+            }
+            dispatchButtonClick(confirmation, yesButton, "world-creation confirmation Yes");
+            System.out.println("VOID FPS accepted vanilla world-creation lifecycle confirmation: "
+                    + translated.getKey());
+            scheduleNext();
+            return;
         }
         if (minecraft.hasSingleplayerServer() && minecraft.level != null) {
             phase = Phase.WAITING_FOR_FULL_CHUNK;
