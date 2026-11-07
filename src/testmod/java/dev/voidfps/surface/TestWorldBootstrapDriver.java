@@ -81,7 +81,11 @@ final class TestWorldBootstrapDriver {
     private void waitForInitialScreen() {
         Screen current = minecraft.gui.screen();
         if (current instanceof AccessibilityOnboardingScreen onboarding) {
-            dispatchButtonClick(onboarding, CommonComponents.GUI_CONTINUE, "accessibility Continue");
+            Button continueButton = findButton(onboarding, CommonComponents.GUI_CONTINUE);
+            if (continueButton == null) {
+                throw new IllegalStateException("Accessibility onboarding Continue button was not found");
+            }
+            dispatchButtonClick(onboarding, continueButton, "accessibility Continue");
             phase = Phase.WAITING_FOR_ONBOARDING_EXIT;
             phaseStartedAt = System.nanoTime();
             System.out.println("VOID FPS first-run accessibility Continue click dispatched through Screen.mouseClicked");
@@ -135,6 +139,19 @@ final class TestWorldBootstrapDriver {
                             + (current == null ? "null" : current.getClass().getName()));
         }
         scheduleNext();
+    }
+
+    private Button findButton(Screen screen, net.minecraft.network.chat.Component message) {
+        List<Button> matches = new ArrayList<>();
+        for (var child : screen.children()) {
+            if (child instanceof Button button && button.getMessage().equals(message)) {
+                matches.add(button);
+            }
+        }
+        if (matches.size() > 1) {
+            throw new IllegalStateException("Expected at most one matching button, found " + matches.size());
+        }
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     private void dispatchCreateClick(CreateWorldScreen screen) {
