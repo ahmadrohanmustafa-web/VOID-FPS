@@ -30,10 +30,11 @@ import java.util.concurrent.TimeUnit;
  * vanilla Create World screen and verifies a real FULL client chunk.
  */
 final class TestWorldBootstrapDriver {
-    private static final long SCREEN_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(90);
+    private static final long SCREEN_TIMEOUT_NANOS = TimeUnit.SECONDS.toNANOS(90);
     private static final long WORLD_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(180);
     private static final long DISCONNECT_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(45);
     private static final long POLL_MILLIS = 200L;
+    private static final int STONE_SEARCH_CHUNK_RADIUS = 8;
 
     private enum Phase {
         WAITING_FOR_INITIAL_SCREEN,
@@ -187,10 +188,6 @@ final class TestWorldBootstrapDriver {
         }
 
         MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(0, 0));
-        // Keep vanilla coordinate hit-testing above, but invoke the resolved
-        // vanilla AbstractButton callback directly. In the headless client,
-        // Screen.mouseClicked can consume the event without reaching the
-        // widget's onPress callback, which left onboarding's fade timer unset.
         button.onClick(click, false);
         clickDispatched = true;
         System.out.println("VOID FPS vanilla " + label
@@ -269,8 +266,10 @@ final class TestWorldBootstrapDriver {
                     BlockPos stoneFixture = findStoneFixture(level, chunk.getPos());
                     if (stoneFixture == null) {
                         throw new IllegalStateException(
-                                "No generated stone block was found in the verified player chunk");
+                                "No generated stone block was found in any loaded FULL chunk within "
+                                        + STONE_SEARCH_CHUNK_RADIUS + " chunks of the player");
                     }
+                    System.out.println("VOID FPS selected generated stone fixture at " + stoneFixture);
                     NativeVanillaCaptureTest.verifyStone(level, stoneFixture);
                     beginDisconnect();
                     return;
@@ -285,20 +284,48 @@ final class TestWorldBootstrapDriver {
         scheduleNext();
     }
 
-    private BlockPos findStoneFixture(ClientLevel level, ChunkPos chunkPos) {
-        int minX = chunkPos.getMinBlockX();
-        int minZ = chunkPos.getMinBlockZ();
+    private BlockPos findStoneFixture(ClientLevel level, ChunkPos playerChunkPos) {
+        ClientChunkCache chunks = level.getChunkSource();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
-            for (int x = minX; x < minX + 16; x++) {
-                for (int z = minZ; z < minZ + 16; z++) {
-                    cursor.set(x, y, z);
-                    if (level.getBlockState(cursor).is(Blocks.STONE)) {
-                        return cursor.immutable();
+        int inspectedChunks = 0;
+
+        for (int radius = 0; radius <= STONE_SEARCH_CHUNK_RADIUS; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
+                        continue;
+                    }
+
+                    LevelChunk candidate = chunks.getChunk(
+                            playerChunkPos.x + dx,
+                            playerChunkPos.z + dz,
+                            ChunkStatus.FULL,
+                            false);
+                    if (candidate == null) {
+                        continue;
+                    }
+                    inspectedChunks++;
+
+                    int minX = candidate.getPos().getMinBlockX();
+                    int minZ = candidate.getPos().getMinBlockZ();
+                    for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
+                        for (int x = minX; x < minX + 16; x++) {
+                            for (int z = minZ; z < minZ + 16; z++) {
+                                cursor.set(x, y, z);
+                                if (candidate.getBlockState(cursor).is(Blocks.STONE)) {
+                                    System.out.println("VOID FPS stone fixture search inspected "
+                                            + inspectedChunks + " loaded FULL chunks");
+                                    return cursor.immutable();
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        System.out.println("VOID FPS stone fixture search found no stone after inspecting "
+                + inspectedChunks + " loaded FULL chunks");
         return null;
     }
 
