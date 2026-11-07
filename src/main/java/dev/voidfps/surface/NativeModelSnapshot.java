@@ -63,6 +63,16 @@ public final class NativeModelSnapshot {
             return parts.isEmpty();
         }
 
+        /** Every selected part must use the same AO mode because the candidate emits one block-wide path. */
+        public boolean hasConsistentAmbientOcclusion() {
+            if (parts.isEmpty()) return false;
+            boolean expected = parts.getFirst().ambientOcclusion();
+            for (Part part : parts) {
+                if (part.ambientOcclusion() != expected) return false;
+            }
+            return true;
+        }
+
         /**
          * Conservative geometry-only precheck for a single full-cube surface.
          *
