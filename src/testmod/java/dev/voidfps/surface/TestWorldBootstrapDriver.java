@@ -265,11 +265,9 @@ final class TestWorldBootstrapDriver {
                             + ", fullChunk=true, nonAirSection=true");
                     BlockPos stoneFixture = findStoneFixture(level, chunk.getPos());
                     if (stoneFixture == null) {
-                        throw new IllegalStateException(
-                                "No generated stone block was found in any loaded FULL chunk within "
-                                        + STONE_SEARCH_CHUNK_RADIUS + " chunks of the player");
+                        stoneFixture = createTestStoneFixture(level, player);
                     }
-                    System.out.println("VOID FPS selected generated stone fixture at " + stoneFixture);
+                    System.out.println("VOID FPS selected stone capture fixture at " + stoneFixture);
                     NativeVanillaCaptureTest.verifyStone(level, stoneFixture);
                     beginDisconnect();
                     return;
@@ -282,6 +280,25 @@ final class TestWorldBootstrapDriver {
                     "Timed out waiting for the player's actual FULL chunk with non-air section data");
         }
         scheduleNext();
+    }
+
+    /**
+     * Creates a deterministic stone fixture in the disposable test world when
+     * natural terrain around spawn contains no stone (for example, a superflat
+     * preset). This is client-test-only and never runs in normal gameplay.
+     */
+    private BlockPos createTestStoneFixture(ClientLevel level, LocalPlayer player) {
+        BlockPos origin = player.blockPosition();
+        int y = Math.min(level.getMaxY() - 1, origin.getY() + 4);
+        BlockPos fixture = new BlockPos(origin.getX() + 2, y, origin.getZ() + 2);
+        if (!level.setBlock(fixture, Blocks.STONE.defaultBlockState(), 3)
+                || !level.getBlockState(fixture).is(Blocks.STONE)) {
+            throw new IllegalStateException(
+                    "Could not place and verify a client-side stone fixture in the disposable test world at "
+                            + fixture);
+        }
+        System.out.println("VOID FPS created deterministic client-test stone fixture at " + fixture);
+        return fixture;
     }
 
     private BlockPos findStoneFixture(ClientLevel level, ChunkPos playerChunkPos) {
