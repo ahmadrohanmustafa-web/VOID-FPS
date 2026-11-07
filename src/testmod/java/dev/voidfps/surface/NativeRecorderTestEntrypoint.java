@@ -202,6 +202,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         assertNativeEligibilityRejected(Blocks.GLOWSTONE.defaultBlockState(), "glowstone",
                 "block state emits light");
 
+        verifyNativeEligibilityMatrix(modelSet);
         verifyVanillaStoneFaceCulling();
 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
@@ -214,6 +215,62 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         // Continue into the test-only vanilla world bootstrap. Production sources and
         // the released mod JAR remain untouched by this automated integration test.
         TestWorldBootstrapDriver.start(minecraft);
+    }
+
+    /**
+     * Exercises the resource-loaded native eligibility gate across several ordinary
+     * full-cube models, then confirms a tinted grass model is rejected for material
+     * semantics rather than being silently treated as a plain solid cube.
+     */
+    private static void verifyNativeEligibilityMatrix(BlockStateModelSet modelSet) {
+        net.minecraft.world.level.block.state.BlockState[] acceptedStates = {
+                Blocks.OAK_PLANKS.defaultBlockState(),
+                Blocks.SANDSTONE.defaultBlockState(),
+                Blocks.OBSIDIAN.defaultBlockState(),
+                Blocks.NETHERRACK.defaultBlockState(),
+                Blocks.QUARTZ_BLOCK.defaultBlockState(),
+                Blocks.MOSS_BLOCK.defaultBlockState()
+        };
+
+        int accepted = 0;
+        for (int index = 0; index < acceptedStates.length; index++) {
+            var state = acceptedStates[index];
+            var model = modelSet.get(state);
+            if (model == null) {
+                throw new IllegalStateException("Missing resource-loaded model for eligibility fixture " + state);
+            }
+            NativeModelSnapshot.Snapshot snapshot = NativeModelSnapshot.collect(
+                    model, RandomSource.create(0x564F494446505300L + index));
+            SurfaceEligibility.NativeGeometryAnalysis result =
+                    SurfaceEligibility.analyzeNativeModel(state, snapshot);
+            if (!result.supported()) {
+                throw new IllegalStateException(
+                        "Expected ordinary full-cube model to pass native eligibility: "
+                                + state + " rejected because " + result.rejectReason());
+            }
+            accepted++;
+        }
+
+        var grassState = Blocks.GRASS_BLOCK.defaultBlockState();
+        var grassModel = modelSet.get(grassState);
+        if (grassModel == null) {
+            throw new IllegalStateException("Missing resource-loaded grass block model");
+        }
+        NativeModelSnapshot.Snapshot grassSnapshot = NativeModelSnapshot.collect(
+                grassModel, RandomSource.create(0x4752415353424C4FL));
+        if (grassSnapshot.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException(
+                    "Tinted grass block model incorrectly passed the plain untinted material precheck");
+        }
+        SurfaceEligibility.NativeGeometryAnalysis grassResult =
+                SurfaceEligibility.analyzeNativeModel(grassState, grassSnapshot);
+        if (grassResult.supported()) {
+            throw new IllegalStateException(
+                    "Tinted grass block incorrectly passed native full-cube eligibility");
+        }
+
+        System.out.println("VOID FPS native eligibility matrix passed: accepted="
+                + accepted + ", tintedFallback=grass_block, rejectReason=" + grassResult.rejectReason());
     }
 
     private static void assertNativeEligibilityRejected(
