@@ -80,7 +80,13 @@ final class NativeVanillaCaptureTest {
         BlockState[] states = {
                 Blocks.DIRT.defaultBlockState(),
                 Blocks.COBBLESTONE.defaultBlockState(),
-                Blocks.BRICKS.defaultBlockState()
+                Blocks.BRICKS.defaultBlockState(),
+                Blocks.OAK_PLANKS.defaultBlockState(),
+                Blocks.SANDSTONE.defaultBlockState(),
+                Blocks.OBSIDIAN.defaultBlockState(),
+                Blocks.NETHERRACK.defaultBlockState(),
+                Blocks.QUARTZ_BLOCK.defaultBlockState(),
+                Blocks.MOSS_BLOCK.defaultBlockState()
         };
 
         for (int index = 0; index < states.length; index++) {
