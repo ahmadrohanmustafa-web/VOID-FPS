@@ -59,7 +59,89 @@ final class NativeVanillaCaptureTest {
                 + ", vertices=" + first.vertices().size()
                 + ", repeatedCaptureExact=true");
 
+        verifyCandidateFaceSelection(level, pos, state, model, seed, first.quads());
         verifyNativeWorldFaceCulling(level, pos, state, model, seed);
+    }
+
+    /**
+     * Test-only VOID candidate face selector. It independently walks the selected native
+     * model's directional quads, applies Minecraft's face-visibility predicate to live
+     * neighbours, and compares the ordered native quad identities/materials with the
+     * actual ModelBlockRenderer output.
+     */
+    private static void verifyCandidateFaceSelection(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed,
+            List<QuadSignature> isolatedVanilla) {
+        List<QuadSignature> isolatedCandidate =
+                candidateVisibleQuads(level, pos, state, model, seed);
+        assertCandidateMatchesVanilla("isolated", isolatedVanilla, isolatedCandidate);
+
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbourPos = pos.relative(direction);
+            BlockState previous = level.getBlockState(neighbourPos);
+            try {
+                if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
+                        || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                    throw new IllegalStateException(
+                            "Could not place candidate selector neighbour on " + direction);
+                }
+
+                Capture vanilla = capture(level, pos, state, model, seed);
+                List<QuadSignature> candidate =
+                        candidateVisibleQuads(level, pos, state, model, seed);
+                assertCandidateMatchesVanilla(direction.name(), vanilla.quads(), candidate);
+            } finally {
+                if (!level.setBlock(neighbourPos, previous, 3)
+                        || !level.getBlockState(neighbourPos).equals(previous)) {
+                    throw new IllegalStateException(
+                            "Could not restore candidate selector neighbour at " + neighbourPos);
+                }
+            }
+        }
+    }
+
+    private static List<QuadSignature> candidateVisibleQuads(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        NativeModelSnapshot.Snapshot snapshot =
+                NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
+        List<QuadSignature> candidate = new ArrayList<>();
+        for (Direction direction : Direction.values()) {
+            BlockState neighbour = level.getBlockState(pos.relative(direction));
+            if (!net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
+                continue;
+            }
+            for (NativeModelSnapshot.Part part : snapshot.parts()) {
+                for (NativeModelSnapshot.FaceQuads face : part.directionalQuads()) {
+                    if (face.direction() != direction) continue;
+                    for (var quad : face.quads()) {
+                        candidate.add(new QuadSignature(
+                                quad.direction(), quad.materialInfo(), candidate.size() * 4));
+                    }
+                }
+            }
+        }
+        return List.copyOf(candidate);
+    }
+
+    private static void assertCandidateMatchesVanilla(
+            String scenario,
+            List<QuadSignature> vanilla,
+            List<QuadSignature> candidate) {
+        if (!vanilla.equals(candidate)) {
+            throw new IllegalStateException(
+                    "VOID candidate face selection differs from vanilla for " + scenario
+                            + ": vanilla=" + vanilla + ", candidate=" + candidate);
+        }
+        System.out.println("VOID FPS candidate face-selection parity passed: scenario="
+                + scenario + ", quads=" + candidate.size());
     }
 
     /**
