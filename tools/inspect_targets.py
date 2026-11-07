@@ -56,6 +56,18 @@ TARGET_SIMPLE_NAMES = [
     "VoxelShape",
     "BlockPos",
     "Vec3",
+    # Resource/model reload APIs for real resource-pack compatibility tests.
+    "Minecraft",
+    "ModelManager",
+    "BlockStateModelLoader",
+    "ReloadableResourceManager",
+    "ResourceManager",
+    "Resource",
+    "PackRepository",
+    "PackResources",
+    "PathPackResources",
+    "FilePackResources",
+    "PreparableReloadListener",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -78,7 +90,7 @@ EXACT_CLASSES = {
 
 # Lines in javap output that are worth highlighting in summary.md.
 KEYWORDS = re.compile(
-    r"tesselate|tessellate|shouldRenderFace|isFaceOccluded|skipRendering|compile|tint|colorInWorld|"
+    r"tesselate|tessellate|shouldRenderFace|isFaceOccluded|skipRendering|compile|tint|colorInWorld|reload|resource|pack|findResources|getResource|listPacks|"
     r"getLightCoords|getShade|renderModel|addFace|cull|occlu|isSolidRender|"
     r"getFaceOcclusionShape|isCollisionShapeFullBlock|useShapeForLightOcclusion|"
     r"canOcclude|getVisualShape|getOcclusionShape|hasOffsetFunction|getOffset|offset|Cache|getRenderer|blockentity|blockEntity",
@@ -90,7 +102,10 @@ BYTECODE_CLASSES = [
     "BlockStateModelPart", "BlockStateModel", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
     "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
     "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
-    "Shapes", "VoxelShape", "BlockPos", "Vec3"
+    "Shapes", "VoxelShape", "BlockPos", "Vec3",
+    "Minecraft", "ModelManager", "BlockStateModelLoader", "ReloadableResourceManager",
+    "ResourceManager", "Resource", "PackRepository", "PackResources",
+    "PathPackResources", "FilePackResources", "PreparableReloadListener"
 ]
 
 
