@@ -61,6 +61,82 @@ final class NativeVanillaCaptureTest {
 
         verifyCandidateFaceSelection(level, pos, state, model, seed, first.quads());
         verifyNativeWorldFaceCulling(level, pos, state, model, seed);
+        verifyAdditionalFullCubeModels(level, pos);
+    }
+
+    /**
+     * Extends native candidate parity beyond stone to several ordinary full-cube
+     * states. Fixtures and their six neighbours are restored even when an assertion fails.
+     */
+    private static void verifyAdditionalFullCubeModels(ClientLevel level, BlockPos origin) {
+        BlockState[] states = {
+                Blocks.DIRT.defaultBlockState(),
+                Blocks.COBBLESTONE.defaultBlockState(),
+                Blocks.BRICKS.defaultBlockState()
+        };
+
+        for (int index = 0; index < states.length; index++) {
+            BlockPos fixture = origin.above(3 + index * 2);
+            BlockState state = states[index];
+            java.util.Map<BlockPos, BlockState> previousStates = new java.util.LinkedHashMap<>();
+            previousStates.put(fixture, level.getBlockState(fixture));
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbour = fixture.relative(direction);
+                previousStates.putIfAbsent(neighbour, level.getBlockState(neighbour));
+            }
+
+            try {
+                for (Direction direction : Direction.values()) {
+                    BlockPos neighbour = fixture.relative(direction);
+                    if (!level.setBlock(neighbour, Blocks.AIR.defaultBlockState(), 3)
+                            || !level.getBlockState(neighbour).isAir()) {
+                        throw new IllegalStateException(
+                                "Could not clear additional-model fixture neighbour " + neighbour);
+                    }
+                }
+                if (!level.setBlock(fixture, state, 3)
+                        || !level.getBlockState(fixture).equals(state)) {
+                    throw new IllegalStateException(
+                            "Could not place additional full-cube fixture " + state + " at " + fixture);
+                }
+
+                BlockStateModel model = net.minecraft.client.Minecraft.getInstance()
+                        .getModelManager().getBlockStateModelSet().get(state);
+                if (model == null) {
+                    throw new IllegalStateException("No resource-loaded model for " + state);
+                }
+                long seed = state.getSeed(fixture);
+                NativeModelSnapshot.Snapshot snapshot =
+                        NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
+                SurfaceEligibility.NativeGeometryAnalysis eligibility =
+                        SurfaceEligibility.analyzeNativeModel(state, snapshot);
+                if (!eligibility.supported()) {
+                    throw new IllegalStateException(
+                            "Expected ordinary full-cube fixture to pass native eligibility: "
+                                    + state + " rejected because " + eligibility.rejectReason());
+                }
+
+                Capture vanilla = capture(level, fixture, state, model, seed);
+                if (vanilla.quads().size() != 6 || vanilla.vertices().size() != 24) {
+                    throw new IllegalStateException(
+                            "Unexpected vanilla full-cube output for " + state
+                                    + ": quads=" + vanilla.quads().size()
+                                    + ", vertices=" + vanilla.vertices().size());
+                }
+                verifyCandidateFaceSelection(level, fixture, state, model, seed, vanilla.quads());
+                verifyNativeWorldFaceCulling(level, fixture, state, model, seed);
+                System.out.println("VOID FPS additional full-cube native parity passed: block="
+                        + state.getBlock() + ", quads=6, vertices=24, eligibility=accepted");
+            } finally {
+                for (var entry : previousStates.entrySet()) {
+                    if (!level.setBlock(entry.getKey(), entry.getValue(), 3)
+                            || !level.getBlockState(entry.getKey()).equals(entry.getValue())) {
+                        throw new IllegalStateException(
+                                "Could not restore additional-model fixture block at " + entry.getKey());
+                    }
+                }
+            }
+        }
     }
 
     /**
