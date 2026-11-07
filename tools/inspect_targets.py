@@ -74,6 +74,17 @@ TARGET_SIMPLE_NAMES = [
     "FolderRepositorySource",
     "PackType",
     "Identifier",
+    # Exact pack construction/metadata types used by the real folder-pack integration test.
+    "PackSelectionConfig",
+    "PackSource",
+    "PackMetadataResources",
+    "AbstractPackMetadataResources",
+    "PackFormat",
+    "InclusiveRange",
+    "KnownPack",
+    "Pack$ResourcesSupplier",
+    "Pack$Metadata",
+    "BlockStateModelSet",
 ]
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
@@ -98,6 +109,16 @@ EXACT_CLASSES = {
     "FolderRepositorySource": "net/minecraft/server/packs/repository/FolderRepositorySource.class",
     "PackType": "net/minecraft/server/packs/PackType.class",
     "Identifier": "net/minecraft/resources/Identifier.class",
+    "PackSelectionConfig": "net/minecraft/server/packs/PackSelectionConfig.class",
+    "PackSource": "net/minecraft/server/packs/repository/PackSource.class",
+    "PackMetadataResources": "net/minecraft/server/packs/PackMetadataResources.class",
+    "AbstractPackMetadataResources": "net/minecraft/server/packs/AbstractPackMetadataResources.class",
+    "PackFormat": "net/minecraft/server/packs/metadata/pack/PackFormat.class",
+    "InclusiveRange": "net/minecraft/util/InclusiveRange.class",
+    "KnownPack": "net/minecraft/server/packs/repository/KnownPack.class",
+    "Pack$ResourcesSupplier": "net/minecraft/server/packs/repository/Pack$ResourcesSupplier.class",
+    "Pack$Metadata": "net/minecraft/server/packs/repository/Pack$Metadata.class",
+    "BlockStateModelSet": "net/minecraft/client/renderer/block/BlockStateModelSet.class",
 }
 
 # Lines in javap output that are worth highlighting in summary.md.
@@ -119,7 +140,10 @@ BYTECODE_CLASSES = [
     "ResourceManager", "Resource", "PackRepository", "PackResources",
     "PathPackResources", "FilePackResources", "PreparableReloadListener",
     "Pack", "PackLocationInfo", "PackMetadataSection", "FolderRepositorySource",
-    "PackType", "Identifier"
+    "PackType", "Identifier", "PackSelectionConfig", "PackSource",
+    "PackMetadataResources", "AbstractPackMetadataResources", "PackFormat",
+    "InclusiveRange", "KnownPack", "Pack$ResourcesSupplier", "Pack$Metadata",
+    "BlockStateModelSet"
 ]
 
 
