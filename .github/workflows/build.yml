@@ -56,6 +56,12 @@ jobs:
           grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:dirt}' build/void-fps-client-smoke.log
           grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:cobblestone}' build/void-fps-client-smoke.log
           grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:bricks}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:oak_planks}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:sandstone}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:obsidian}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:netherrack}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:quartz_block}' build/void-fps-client-smoke.log
+          grep -Fq 'VOID FPS additional full-cube native parity passed: block=Block{minecraft:moss_block}' build/void-fps-client-smoke.log
           grep -q "VOID FPS test world disconnected through normal save lifecycle" build/void-fps-client-smoke.log
           echo "Minecraft client loaded VOID FPS and passed native vertex-output and resource-loaded block-model checks."
 
