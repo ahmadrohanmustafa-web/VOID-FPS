@@ -13,7 +13,9 @@ import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
@@ -264,6 +266,12 @@ final class TestWorldBootstrapDriver {
                             + ", clientLevel=true, loadedChunks=" + chunks.getLoadedChunksCount()
                             + ", playerChunk=" + chunk.getPos()
                             + ", fullChunk=true, nonAirSection=true");
+                    BlockPos stoneFixture = findStoneFixture(level, chunk.getPos());
+                    if (stoneFixture == null) {
+                        throw new IllegalStateException(
+                                "No generated stone block was found in the verified player chunk");
+                    }
+                    NativeVanillaCaptureTest.verifyStone(level, stoneFixture);
                     beginDisconnect();
                     return;
                 }
@@ -275,6 +283,23 @@ final class TestWorldBootstrapDriver {
                     "Timed out waiting for the player's actual FULL chunk with non-air section data");
         }
         scheduleNext();
+    }
+
+    private BlockPos findStoneFixture(ClientLevel level, ChunkPos chunkPos) {
+        int minX = chunkPos.getMinBlockX();
+        int minZ = chunkPos.getMinBlockZ();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
+            for (int x = minX; x < minX + 16; x++) {
+                for (int z = minZ; z < minZ + 16; z++) {
+                    cursor.set(x, y, z);
+                    if (level.getBlockState(cursor).is(Blocks.STONE)) {
+                        return cursor.immutable();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void beginDisconnect() {
