@@ -282,6 +282,51 @@ final class NativeVanillaCaptureTest {
             BlockState state,
             BlockStateModel model,
             long seed) {
+        RenderSectionRegion region = createSectionRegion(level, pos, state);
+        verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
+        System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
+                + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
+
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbourPos = pos.relative(direction);
+            BlockState previous = level.getBlockState(neighbourPos);
+            try {
+                level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3);
+                if (!level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                    throw new IllegalStateException(
+                            "Could not place section-region parity neighbour on " + direction);
+                }
+
+                RenderSectionRegion neighbourRegion = createSectionRegion(level, pos, state);
+                BlockState copiedNeighbour = neighbourRegion.getBlockState(neighbourPos);
+                if (!copiedNeighbour.is(Blocks.STONE)) {
+                    throw new IllegalStateException(
+                            "Section-region snapshot missed temporary neighbour on " + direction
+                                    + ": " + copiedNeighbour);
+                }
+                Capture vanilla = capture(neighbourRegion, pos, state, model, seed);
+                if (vanilla.quads().size() != 5 || vanilla.vertices().size() != 20) {
+                    throw new IllegalStateException(
+                            "Unexpected vanilla section-region output with neighbour " + direction
+                                    + ": quads=" + vanilla.quads().size()
+                                    + ", vertices=" + vanilla.vertices().size());
+                }
+                verifyCandidateVertexOutput(
+                        neighbourRegion, pos, state, model, seed, "section-region-" + direction.name());
+                System.out.println("VOID FPS section-region neighbour snapshot passed: covered="
+                        + direction + ", copiedStateExact=true, vanillaVertices=20");
+            } finally {
+                level.setBlock(neighbourPos, previous, 3);
+                if (!level.getBlockState(neighbourPos).equals(previous)) {
+                    throw new IllegalStateException(
+                            "Could not restore section-region neighbour at " + neighbourPos);
+                }
+            }
+        }
+    }
+
+    private static RenderSectionRegion createSectionRegion(
+            ClientLevel level, BlockPos pos, BlockState expectedState) {
         int centerSectionX = pos.getX() >> 4;
         int centerSectionY = pos.getY() >> 4;
         int centerSectionZ = pos.getZ() >> 4;
@@ -312,11 +357,11 @@ final class NativeVanillaCaptureTest {
 
         RenderSectionRegion region = new RenderSectionRegion(
                 level, minSectionX, minSectionY, minSectionZ, sections);
-        if (!region.getBlockState(pos).equals(state)) {
+        if (!region.getBlockState(pos).equals(expectedState)) {
             throw new IllegalStateException(
                     "Section-region center state differs from live ClientLevel at " + pos
                             + ": region=" + region.getBlockState(pos)
-                            + ", live=" + state);
+                            + ", live=" + expectedState);
         }
         for (Direction direction : Direction.values()) {
             BlockPos neighbourPos = pos.relative(direction);
@@ -328,10 +373,7 @@ final class NativeVanillaCaptureTest {
                                 + ": region=" + regionNeighbour + ", live=" + liveNeighbour);
             }
         }
-
-        verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
-        System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
-                + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
+        return region;
     }
 
     /**
