@@ -79,6 +79,7 @@ jobs:
             net.minecraft.client.gui.components.AbstractWidget\$WithInactiveMessage
             net.minecraft.client.gui.components.events.AbstractContainerEventHandler
             net.minecraft.client.gui.screens.Screen
+            net.minecraft.client.gui.screens.AccessibilityOnboardingScreen
             net.minecraft.client.gui.Gui
             net.minecraft.client.server.IntegratedServer
             net.minecraft.client.multiplayer.ClientChunkCache
