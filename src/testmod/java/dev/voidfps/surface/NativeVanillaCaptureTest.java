@@ -3,6 +3,7 @@ package dev.voidfps.surface;
 import com.mojang.blaze3d.vertex.QuadInstance;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockModelLighter;
 import net.minecraft.client.renderer.block.BlockQuadOutput;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -155,6 +156,7 @@ final class NativeVanillaCaptureTest {
         List<QuadSignature> isolatedCandidate =
                 candidateVisibleQuads(level, pos, state, model, seed);
         assertCandidateMatchesVanilla("isolated", isolatedVanilla, isolatedCandidate);
+        verifyCandidateVertexOutput(level, pos, state, model, seed, "isolated");
 
         for (Direction direction : Direction.values()) {
             BlockPos neighbourPos = pos.relative(direction);
@@ -170,6 +172,7 @@ final class NativeVanillaCaptureTest {
                 List<QuadSignature> candidate =
                         candidateVisibleQuads(level, pos, state, model, seed);
                 assertCandidateMatchesVanilla(direction.name(), vanilla.quads(), candidate);
+                verifyCandidateVertexOutput(level, pos, state, model, seed, direction.name());
             } finally {
                 if (!level.setBlock(neighbourPos, previous, 3)
                         || !level.getBlockState(neighbourPos).equals(previous)) {
@@ -259,6 +262,119 @@ final class NativeVanillaCaptureTest {
                 }
             }
         }
+    }
+
+    /**
+     * Runs the independent candidate emitter against vanilla inside one native lighter-cache
+     * scope. Both paths receive the same live ClientLevel, state, position, selected model,
+     * seed, and thread-local BlockModelLighter cache. The current eligible set excludes tint,
+     * offset functions, unculled quads, and non-solid/emissive materials.
+     */
+    private static void verifyCandidateVertexOutput(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed,
+            String scenario) {
+        BlockModelLighter.enableCaching();
+        try {
+            Capture vanilla = capture(level, pos, state, model, seed);
+            Capture candidate = captureCandidate(level, pos, state, model, seed);
+            NativeVertexParity.Result parity =
+                    NativeVertexParity.compare(vanilla.vertices(), candidate.vertices(), 0.0f);
+            if (!parity.matches()) {
+                throw new IllegalStateException(
+                        "VOID candidate vertex-output parity differs from vanilla for " + scenario
+                                + ": " + parity.difference());
+            }
+            if (!vanilla.quads().equals(candidate.quads())) {
+                throw new IllegalStateException(
+                        "VOID candidate quad metadata/order differs from vanilla for " + scenario
+                                + ": vanilla=" + vanilla.quads() + ", candidate=" + candidate.quads());
+            }
+            System.out.println("VOID FPS candidate native vertex-output parity passed: scenario="
+                    + scenario + ", vertices=" + parity.comparedVertices()
+                    + ", exact=true, cacheScope=shared");
+        } finally {
+            BlockModelLighter.clearCache();
+        }
+    }
+
+    /**
+     * Independent test-only candidate path. It selects the same seeded native model parts,
+     * performs the narrow full-cube face test, asks Minecraft's BlockModelLighter to prepare
+     * AO or flat data, and forwards the original baked quads to the native packed-vertex path.
+     */
+    private static Capture captureCandidate(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        NativeModelSnapshot.Snapshot snapshot =
+                NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
+        SurfaceEligibility.NativeGeometryAnalysis eligibility =
+                SurfaceEligibility.analyzeNativeModel(state, snapshot);
+        if (!eligibility.supported()) {
+            throw new IllegalStateException(
+                    "Candidate emitter received an ineligible model: " + eligibility.rejectReason());
+        }
+        if (snapshot.parts().isEmpty()) {
+            throw new IllegalStateException("Candidate emitter received no selected model parts");
+        }
+
+        boolean useAmbientOcclusion =
+                state.getLightEmission() == 0 && snapshot.parts().getFirst().ambientOcclusion();
+        var offset = state.getOffset(pos);
+        float x = pos.getX() + (float) offset.x;
+        float y = pos.getY() + (float) offset.y;
+        float z = pos.getZ() + (float) offset.z;
+
+        NativeLightingAdapter lighting = new NativeLightingAdapter();
+        NativeVertexRecorder recorder = new NativeVertexRecorder();
+        List<QuadSignature> quads = new ArrayList<>();
+        BlockQuadOutput output = (qx, qy, qz, quad, instance) -> {
+            int firstVertex = recorder.snapshot().size();
+            quads.add(new QuadSignature(quad.direction(), quad.materialInfo(), firstVertex));
+            recorder.putBlockBakedQuad(qx, qy, qz, quad, instance);
+        };
+
+        for (NativeModelSnapshot.Part part : snapshot.parts()) {
+            for (Direction direction : Direction.values()) {
+                List<net.minecraft.client.resources.model.geometry.BakedQuad> faceQuads =
+                        part.directionalQuads().stream()
+                                .filter(face -> face.direction() == direction)
+                                .findFirst()
+                                .map(NativeModelSnapshot.FaceQuads::quads)
+                                .orElse(List.of());
+                if (faceQuads.isEmpty()) continue;
+
+                BlockPos neighbourPos = pos.relative(direction);
+                BlockState neighbour = level.getBlockState(neighbourPos);
+                if (!net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
+                    continue;
+                }
+
+                int packedLight = useAmbientOcclusion
+                        ? 0
+                        : lighting.getLightCoords(state, level, neighbourPos);
+                for (var quad : faceQuads) {
+                    QuadInstance instance = new QuadInstance();
+                    if (useAmbientOcclusion) {
+                        lighting.prepareAmbientOcclusion(level, state, pos, quad, instance);
+                    } else {
+                        lighting.prepareFlat(level, state, pos, packedLight, quad, instance);
+                    }
+                    output.put(x, y, z, quad, instance);
+                }
+            }
+        }
+
+        if (recorder.snapshot().size() != quads.size() * 4) {
+            throw new IllegalStateException("Candidate emitter produced an incomplete quad vertex stream");
+        }
+        return new Capture(List.copyOf(quads), recorder.snapshot());
     }
 
     private static Capture capture(
