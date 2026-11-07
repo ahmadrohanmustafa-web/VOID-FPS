@@ -383,3 +383,18 @@ isolated at `run/test-client`.
 
 No real test world has yet been opened by CI, and no native section-region
 fixture has yet been built from live chunks.
+
+
+## Build #252 — client world, server, and loaded-chunk API verification
+
+Build #252 passed. Its vanilla bytecode artifact confirms these Minecraft 26.3 APIs:
+
+- The active GUI screen is available through `Minecraft.gui.screen()`; screen replacement is performed through `Minecraft.gui.setScreen(Screen)` on the game thread.
+- `Minecraft.level` is the client-side `ClientLevel` field. A local integrated server can be checked with `Minecraft.hasSingleplayerServer()` and obtained with `Minecraft.getSingleplayerServer()`.
+- `ClientChunkCache.getLoadedChunksCount()` reports the loaded chunk count. Its `getChunk(int, int, ChunkStatus, boolean)` method can retrieve a chunk at an explicitly requested status; the test must not create chunks itself.
+- A real `LevelChunk` exposes `getPos()`, `getSections()`, `getSection(int)`, `getBlockState(BlockPos)`, and inherited section-position/status accessors through `ChunkAccess`.
+- `Screen.children()` exposes the registered GUI event listeners. `ContainerEventHandler.getChildAt(double,double)` returns the child hit at GUI coordinates, and its vanilla `mouseClicked(MouseButtonEvent, boolean)` dispatches the click through normal event routing.
+- `AbstractWidget` exposes `getX()`, `getY()`, `getWidth()`, `getHeight()`, `isActive()`, and `getMessage()`; these support validation of the Create button before dispatch.
+- `IntegratedServer.stopServer()` is present, but the test driver should prefer the normal client disconnect/exit lifecycle rather than calling internal server shutdown directly while the client is connected.
+
+These signatures establish the inspection surface, not yet a successful world-creation test. The driver must still verify screen transition, integrated-server startup, non-null client level, and a genuinely loaded full chunk before reporting success. It must time out and fail closed on unexpected confirmation screens or missing state.
