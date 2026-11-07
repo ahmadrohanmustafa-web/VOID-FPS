@@ -203,6 +203,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 "block state emits light");
 
         verifyNativeEligibilityMatrix(modelSet);
+        verifyNativeFallbackMatrix();
         verifyVanillaStoneFaceCulling();
 
         System.out.println("VOID FPS resource-loaded stone model snapshot passed: parts="
@@ -271,6 +272,39 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
 
         System.out.println("VOID FPS native eligibility matrix passed: accepted="
                 + accepted + ", tintedFallback=grass_block, rejectReason=" + grassResult.rejectReason());
+    }
+
+    /**
+     * Negative eligibility matrix for common non-cube and non-opaque states.
+     * These models must stay on vanilla's renderer; this test only checks the
+     * conservative gate and never attempts to emit candidate geometry for them.
+     */
+    private static void verifyNativeFallbackMatrix() {
+        net.minecraft.world.level.block.state.BlockState[] rejectedStates = {
+                Blocks.OAK_SLAB.defaultBlockState(),
+                Blocks.OAK_FENCE.defaultBlockState(),
+                Blocks.GLASS_PANE.defaultBlockState(),
+                Blocks.OAK_LEAVES.defaultBlockState(),
+                Blocks.TORCH.defaultBlockState(),
+                Blocks.WATER.defaultBlockState()
+        };
+
+        int rejected = 0;
+        for (var state : rejectedStates) {
+            SurfaceEligibility.NativeGeometryAnalysis result =
+                    SurfaceEligibility.analyzeNativeModel(state, null);
+            if (result.supported() || result.rejectReason() == null || result.rejectReason().isBlank()) {
+                throw new IllegalStateException(
+                        "Unsafe fallback fixture unexpectedly passed native eligibility: " + state
+                                + ", result=" + result);
+            }
+            rejected++;
+            System.out.println("VOID FPS native fallback matrix rejected: block="
+                    + state.getBlock() + ", reason=" + result.rejectReason());
+        }
+
+        System.out.println("VOID FPS native fallback matrix passed: rejected="
+                + rejected + ", vanillaFallbackRequired=true");
     }
 
     private static void assertNativeEligibilityRejected(
