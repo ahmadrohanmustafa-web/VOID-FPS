@@ -10,8 +10,10 @@ lighter_path = vanilla_root / "BlockModelLighter.bytecode.txt"
 quad_path = vanilla_root / "BakedQuad.bytecode.txt"
 collection_path = inspection_root / "QuadCollection.bytecode.txt"
 builder_path = inspection_root / "QuadCollection$Builder.bytecode.txt"
+interner_path = inspection_root / "ModelBakery$InternerImpl.bytecode.txt"
+face_bakery_path = inspection_root / "FaceBakery.bytecode.txt"
 
-required_paths = (lighter_path, quad_path, collection_path, builder_path)
+required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path)
 missing_files = [str(path) for path in required_paths if not path.is_file()]
 if missing_files:
     sys.exit("Missing required vanilla bytecode dump(s): " + ", ".join(missing_files))
@@ -20,6 +22,8 @@ lighter = lighter_path.read_text(errors="replace")
 quad = quad_path.read_text(errors="replace")
 collection = collection_path.read_text(errors="replace")
 builder = builder_path.read_text(errors="replace")
+interner = interner_path.read_text(errors="replace")
+face_bakery = face_bakery_path.read_text(errors="replace")
 
 checks = {
     "BlockModelLighter.prepareQuadShape": (
@@ -42,6 +46,24 @@ checks = {
             "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> south;",
             "getQuads(net.minecraft.core.Direction)",
             "getAll()",
+        ],
+    ),
+    "ModelBakery vector interner": (
+        interner,
+        [
+            "private final com.google.common.collect.Interner<org.joml.Vector3fc> vectors;",
+            "Interners.newStrongInterner",
+            "Interner.intern:(Ljava/lang/Object;)Ljava/lang/Object;",
+            "public org.joml.Vector3fc vector(org.joml.Vector3fc);",
+        ],
+    ),
+    "FaceBakery baked-position path": (
+        face_bakery,
+        [
+            "FaceInfo$VertexInfo.select:(Lorg/joml/Vector3fc;Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
+            "ModelBaker$Interner.vector:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3fc;",
+            "aastore",
+            "BakedQuad.<init>",
         ],
     ),
     "BakedQuad storage": (
@@ -105,6 +127,6 @@ if failed:
     )
 
 print(
-    "VOID FPS quad-geometry inspection passed: QuadCollection builds immutable quad lists, "
-    "but BakedQuad does not guarantee immutable position vectors; faceCubic remains state-dependent."
+    "VOID FPS quad-geometry inspection passed: FaceBakery bakes mutable Vector3f instances into BakedQuad positions through a strong interner; "
+    "the interner reuses references but does not establish vector immutability, and faceCubic remains state-dependent."
 )
