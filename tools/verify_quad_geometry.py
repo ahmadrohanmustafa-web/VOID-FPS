@@ -35,6 +35,7 @@ face_bakery = face_bakery_path.read_text(errors="replace")
 vertex_output = vertex_output_path.read_text(errors="replace")
 model_bakery = model_bakery_path.read_text(errors="replace")
 model_baker_impl = model_baker_impl_path.read_text(errors="replace")
+failed = False
 cache = cache_path.read_text(errors="replace")
 section_compiler = section_compiler_path.read_text(errors="replace")
 baked_quad = baked_quad_path.read_text(errors="replace")
@@ -101,7 +102,7 @@ else:
         print("PASS: SectionCompiler enables the thread-local cache and clears it on normal completion")
         print("NOTE: the inspected block-tessellation exception path rethrows before clearCache; any added cache must remain safe if a compile aborts")
 
-    quad_header = baked_quad.splitlines()[0] if baked_quad.splitlines() else ""
+    quad_header = next((line.strip() for line in baked_quad.splitlines() if line.strip().startswith("public final class net.minecraft.client.resources.model.geometry.BakedQuad ")), "")
     quad_fields = [
         line.strip()
         for line in baked_quad.splitlines()
@@ -179,8 +180,6 @@ checks = {
         ],
     ),
 }
-
-failed = False
 
 # Separate quad-only geometry calculations from state-dependent face eligibility.
 # Bounds and partial-face classification are derived from the four baked positions.
