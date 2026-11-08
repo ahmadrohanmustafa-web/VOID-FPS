@@ -38,6 +38,11 @@ TARGET_SIMPLE_NAMES = [
     "FluidRenderer",
     "BlockStateModel",
     "ModelBaker",
+    "ModelBakery",
+    "FaceBakery",
+    "BlockElement",
+    "BlockElementFace",
+    "Variant",
     "BlockModel",
     "SingleVariant",
     "WeightedVariants",
@@ -146,7 +151,8 @@ KEYWORDS = re.compile(
 
 BYTECODE_CLASSES = [
     "ModelBlockRenderer", "SectionCompiler", "BlockModelLighter", "BlockQuadOutput",
-    "BlockStateModelPart", "BlockStateModel", "ModelBaker", "BlockModel",
+    "BlockStateModelPart", "BlockStateModel", "ModelBaker", "ModelBakery",
+    "FaceBakery", "BlockElement", "BlockElementFace", "Variant", "BlockModel",
     "SingleVariant", "WeightedVariants", "QuadCollection", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
     "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
     "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
