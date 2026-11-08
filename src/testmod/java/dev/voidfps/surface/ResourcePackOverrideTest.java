@@ -139,8 +139,31 @@ final class ResourcePackOverrideTest {
                                                                                     duplicateFailure = verificationFailure;
                                                                                 }
                                                                             }
-                                                                            restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                                                    duplicateFailure, onSuccess);
+                                                                            if (duplicateFailure != null) {
+                                                                     restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                             duplicateFailure, onSuccess);
+                                                                     return;
+                                                                 }
+                                                                 try {
+                                                                     writeTintedMaterialOverride(packDirectory);
+                                                                 } catch (IOException | RuntimeException | Error fixtureFailure) {
+                                                                     restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                             fixtureFailure, onSuccess);
+                                                                     return;
+                                                                 }
+                                                                 minecraft.reloadResourcePacks().whenComplete((tintedIgnored, tintedReloadFailure) ->
+                                                                         minecraft.execute(() -> {
+                                                                             Throwable tintedFailure = tintedReloadFailure;
+                                                                             if (tintedFailure == null) {
+                                                                                 try {
+                                                                                     verifyTintedMaterialOverride(minecraft);
+                                                                                 } catch (RuntimeException | Error verificationFailure) {
+                                                                                     tintedFailure = verificationFailure;
+                                                                                 }
+                                                                             }
+                                                                             restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                     tintedFailure, onSuccess);
+                                                                         }));
                                                                         }));
                                                             }));
                                                 }));
@@ -517,6 +540,65 @@ final class ResourcePackOverrideTest {
                             + eligibility);
         }
         System.out.println("VOID FPS real duplicate-boundary resource-pack override passed: live reload exposed 12 boundary quads and native eligibility required vanilla fallback");
+    }
+
+    /**
+     * Applies tint metadata to an otherwise valid full cube through the live
+     * resource-pack pipeline. Geometry remains eligible, but material metadata
+     * must force the native path to fall back to vanilla.
+     */
+    private static void writeTintedMaterialOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all", "cullface": "down", "tintindex": 0},
+                        "up": {"texture": "#all", "cullface": "up", "tintindex": 0},
+                        "north": {"texture": "#all", "cullface": "north", "tintindex": 0},
+                        "south": {"texture": "#all", "cullface": "south", "tintindex": 0},
+                        "west": {"texture": "#all", "cullface": "west", "tintindex": 0},
+                        "east": {"texture": "#all", "cullface": "east", "tintindex": 0}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with tint metadata on all six faces");
+    }
+
+    private static void verifyTintedMaterialOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after tinted-material resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot tinted = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (tinted.isEmpty()) {
+            throw new IllegalStateException("Tinted resource-pack override produced an empty model snapshot");
+        }
+        if (!tinted.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("Tinted-material fixture unexpectedly changed full-cube geometry");
+        }
+        if (tinted.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Tinted resource-pack material incorrectly passed the plain-material gate");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, tinted);
+        if (eligibility.supported()
+                || !"native quad material is not plain solid, untinted, static, and non-emissive"
+                        .equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Tinted resource-pack model was not rejected by the native material gate: " + eligibility);
+        }
+        System.out.println("VOID FPS real tinted-material resource-pack override passed: six-face geometry remained valid but tint metadata required vanilla fallback");
     }
 
     private static void restore(
