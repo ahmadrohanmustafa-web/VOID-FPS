@@ -36,6 +36,30 @@ vertex_output = vertex_output_path.read_text(errors="replace")
 model_bakery = model_bakery_path.read_text(errors="replace")
 model_baker_impl = model_baker_impl_path.read_text(errors="replace")
 failed = False
+
+# The vanilla SectionCompiler exception path can bypass clearCache(). Keep the
+# independent test-only candidate path exception-safe so a failed parity check
+# cannot leave cached lighting values behind for a later fixture.
+candidate_capture_path = Path("src/testmod/java/dev/voidfps/surface/NativeVanillaCaptureTest.java")
+if not candidate_capture_path.is_file():
+    print(f"FAIL: test-only native capture source missing: {candidate_capture_path}")
+    failed = True
+else:
+    candidate_capture_source = candidate_capture_path.read_text(errors="replace")
+    candidate_cache_scope = re.search(
+        r"private static void verifyCandidateVertexOutput\\(.*?\\)\\s*\\{"
+        r"\\s*BlockModelLighter\\.enableCaching\\(\\);"
+        r"\\s*try\\s*\\{.*?"
+        r"\\}\\s*finally\\s*\\{\\s*BlockModelLighter\\.clearCache\\(\\);\\s*\\}",
+        candidate_capture_source,
+        re.DOTALL,
+    )
+    if candidate_cache_scope is None:
+        print("FAIL: test-only candidate parity scope must clear BlockModelLighter cache in a finally block")
+        failed = True
+    else:
+        print("PASS: test-only candidate parity scope clears the lighting cache even when capture or comparison throws")
+
 cache = cache_path.read_text(errors="replace")
 section_compiler = section_compiler_path.read_text(errors="replace")
 baked_quad = baked_quad_path.read_text(errors="replace")
