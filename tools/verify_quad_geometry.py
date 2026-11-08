@@ -296,10 +296,20 @@ mutator_pattern = re.compile(
     r"org/joml/Vector3f\\.(?:set|add|sub|mul|div|normalize):"
 )
 
-for dump_path in inspection_root.rglob("*.bytecode.txt"):
+seen_consumer_dump_names = set()
+dump_paths = sorted(
+    inspection_root.rglob("*.bytecode.txt"),
+    key=lambda path: (path.name, 0 if "vanilla-bytecode" in path.parts else 1),
+)
+for dump_path in dump_paths:
+    # inspect_targets.py and the dedicated vanilla dump step can emit the same
+    # class under different folders. Prefer the canonical vanilla-bytecode dump.
+    if dump_path.name in seen_consumer_dump_names:
+        continue
     dump_text = dump_path.read_text(errors="replace")
     if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in dump_text:
         continue
+    seen_consumer_dump_names.add(dump_path.name)
 
     relative_path = dump_path.relative_to(inspection_root)
     discovered_position_consumers.add(relative_path)
@@ -312,7 +322,7 @@ for dump_path in inspection_root.rglob("*.bytecode.txt"):
             return
         body = "\\n".join(current_body)
         if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in body:
-            return
+            return True
         label = f"{relative_path}:{current_header.strip()}"
         position_call_sites.append(label)
         mutators = mutator_pattern.findall(body)
