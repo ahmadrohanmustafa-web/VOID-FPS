@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assert the Minecraft 26.3 caches that VOID FPS must not redundantly reimplement."""
+"""Assert the Minecraft 26.3 caches and reuse guards VOID FPS must not duplicate."""
 from pathlib import Path
 import sys
 
@@ -17,6 +17,14 @@ checks = {
     "SectionCompiler.bytecode.txt": [
         "BlockModelLighter.enableCaching", "BlockModelLighter.clearCache",
     ],
+    "ModelBlockRenderer.bytecode.txt": [
+        # Tint sources and computed colors are reused while tesselating a block.
+        "tintCacheIndex", "computedTintValues", "getTintColor",
+        "BlockTintSource.colorInWorld",
+        # Direction bits prevent repeating neighbor-face checks for the same face.
+        "tesselateAmbientOcclusion", "ishl", "iand", "ior",
+        "shouldRenderFace", "Block.shouldRenderFace", "getQuads",
+    ],
 }
 failed = False
 for filename, needles in checks.items():
@@ -28,10 +36,10 @@ for filename, needles in checks.items():
     content = path.read_text(errors="replace")
     missing = [needle for needle in needles if needle not in content]
     if missing:
-        print(f"FAIL: {filename} missing expected cache evidence: {missing}")
+        print(f"FAIL: {filename} missing expected cache/reuse evidence: {missing}")
         failed = True
     else:
-        print(f"PASS: {filename} confirms {len(needles)} vanilla cache details")
+        print(f"PASS: {filename} confirms {len(needles)} vanilla cache/reuse details")
 if failed:
-    sys.exit("Vanilla cache inspection incomplete or changed; review bytecode before proposing duplicate caches.")
-print("VOID FPS vanilla-cache inspection passed.")
+    sys.exit("Vanilla cache inspection incomplete or changed; review bytecode before proposing duplicate work.")
+print("VOID FPS vanilla-cache and reuse inspection passed.")
