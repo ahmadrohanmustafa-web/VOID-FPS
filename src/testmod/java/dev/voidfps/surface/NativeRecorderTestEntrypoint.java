@@ -213,9 +213,9 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         System.out.println("VOID FPS native eligibility gate passed: stone accepted; air, chest, glass, stairs, and glowstone rejected");
         System.out.println("VOID FPS vanilla stone face-culling checks passed for all 6 directions");
 
-        // Continue into the test-only vanilla world bootstrap. Production sources and
-        // the released mod JAR remain untouched by this automated integration test.
-        TestWorldBootstrapDriver.start(minecraft);
+        // Exercise a real folder resource pack through Minecraft's own repository and reload.
+        // Only after restoring the original selected packs do we continue the world test.
+        ResourcePackOverrideTest.start(minecraft, first, () -> TestWorldBootstrapDriver.start(minecraft));
     }
 
     /**
