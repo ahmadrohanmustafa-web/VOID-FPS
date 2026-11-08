@@ -109,14 +109,33 @@ else:
     handler_index = section_compile.find("ReportedException")
     rethrow_index = section_compile.find("athrow", handler_index)
     exception_table = section_compile[exception_index:] if exception_index >= 0 else ""
+    clear_instruction = re.search(
+        r"^\\s*(\\d+):\\s+invokestatic\\s+#[0-9]+\\s+// Method net/minecraft/client/renderer/block/BlockModelLighter\\.clearCache:",
+        section_compile,
+        re.MULTILINE,
+    )
+    protected_range = re.search(
+        r"^\\s*(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+Class java/lang/Throwable\\s*$",
+        exception_table,
+        re.MULTILINE,
+    )
+    exception_is_bypassed = False
+    if clear_instruction and protected_range:
+        clear_offset = int(clear_instruction.group(1))
+        protected_start, protected_end, handler_target = map(int, protected_range.groups())
+        exception_is_bypassed = (
+            protected_start < protected_end <= handler_target
+            and protected_end <= handler_target < clear_offset
+        )
     if min(enable_index, clear_index, exception_index, handler_index, rethrow_index) < 0 or not (
         enable_index < handler_index < rethrow_index < clear_index < exception_index
-    ) or "Class java/lang/Throwable" not in exception_table:
-        print("FAIL: SectionCompiler cache enable/normal-clear/exception-handler order changed; review lifecycle")
+    ) or not exception_is_bypassed:
+        print("FAIL: SectionCompiler cache enable/normal-clear/exception-table coverage changed; review lifecycle")
         failed = True
     else:
         print("PASS: SectionCompiler enables the thread-local cache and clears it on normal completion")
-        print("NOTE: the inspected block-tessellation exception path rethrows before clearCache; any added cache must remain safe if a compile aborts")
+        print("PASS: bytecode exception-table offsets confirm block-tessellation failures bypass clearCache")
+        print("NOTE: any added cache must remain safe if a compile aborts")
 
     quad_header = next((line.strip() for line in baked_quad.splitlines() if line.strip().startswith("public final class net.minecraft.client.resources.model.geometry.BakedQuad ")), "")
     quad_fields = [
