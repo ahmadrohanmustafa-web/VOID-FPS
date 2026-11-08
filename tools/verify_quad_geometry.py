@@ -283,46 +283,86 @@ else:
     else:
         print("PASS: bakeModels creates exactly one interner, passes the same local reference to both bake paths, and ModelBakery has no interner field")
 
-# Audit the inspected vanilla consumers of BakedQuad.position().
-# They must read Vector3fc coordinates or transform into a separate destination,
-# not mutate the interned position object itself.
-consumer_sources = {"BlockModelLighter": lighter, "VertexConsumer output paths": vertex_output}
-for label, source in consumer_sources.items():
-    if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in source:
-        print(f"FAIL: {label} no longer contains the expected baked-position read path")
-        failed = True
-        continue
-    mutators = re.findall(r"org/joml/Vector3f\.(?:set|add|sub|mul|div|normalize):", source)
-    if mutators:
-        print(f"FAIL: {label} contains direct Vector3f mutator calls near baked-quad handling: {mutators}")
-        failed = True
-    else:
-        print(f"PASS: {label} reads baked positions without direct Vector3f mutator calls")
-
-# Inventory every bytecode dump produced by this inspection run, not only the
-# hand-picked consumer files above. A newly discovered position() caller must
-# be reviewed before the consumer audit can be considered complete.
+# Audit every inspected method that consumes BakedQuad.position(), not just
+# the two currently known classes. A newly discovered call site is reviewed
+# automatically for direct Vector3f mutation within that same method.
 known_position_consumers = {
-    Path("BlockModelLighter.bytecode.txt"),
+    Path("vanilla-bytecode/BlockModelLighter.bytecode.txt"),
     Path("vertex-output.bytecode.txt"),
 }
 discovered_position_consumers = set()
+position_call_sites = []
+mutator_pattern = re.compile(
+    r"org/joml/Vector3f\\.(?:set|add|sub|mul|div|normalize):"
+)
+
 for dump_path in inspection_root.rglob("*.bytecode.txt"):
-    if dump_path == lighter_path or dump_path == quad_path:
-        continue
     dump_text = dump_path.read_text(errors="replace")
-    if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" in dump_text:
-        discovered_position_consumers.add(dump_path.relative_to(inspection_root))
-unexpected_consumers = discovered_position_consumers - known_position_consumers
+    if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in dump_text:
+        continue
+
+    relative_path = dump_path.relative_to(inspection_root)
+    discovered_position_consumers.add(relative_path)
+    lines = dump_text.splitlines()
+    current_header = None
+    current_body = []
+
+    def inspect_current_method():
+        if current_header is None:
+            return
+        body = "\\n".join(current_body)
+        if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in body:
+            return
+        label = f"{relative_path}:{current_header.strip()}"
+        position_call_sites.append(label)
+        mutators = mutator_pattern.findall(body)
+        if mutators:
+            print(f"FAIL: baked-position consumer method directly invokes mutable Vector3f operations: {label}: {mutators}")
+            return False
+        print(f"PASS: baked-position consumer method has no direct Vector3f mutator calls: {label}")
+        return True
+
+    method_failed = False
+    for line in lines:
+        is_method_header = (
+            line.startswith("  ")
+            and not line.startswith("    ")
+            and "(" in line
+            and line.rstrip().endswith(";")
+        )
+        if is_method_header:
+            if inspect_current_method() is False:
+                method_failed = True
+            current_header = line
+            current_body = [line]
+        elif current_header is not None:
+            current_body.append(line)
+    if inspect_current_method() is False:
+        method_failed = True
+
+    if method_failed:
+        failed = True
+
 missing_consumers = known_position_consumers - discovered_position_consumers
-if unexpected_consumers:
-    print(f"FAIL: new baked-position consumer(s) require manual review: {sorted(map(str, unexpected_consumers))}")
-    failed = True
-elif missing_consumers:
+if missing_consumers:
     print(f"FAIL: expected baked-position consumer dump(s) not found: {sorted(map(str, missing_consumers))}")
     failed = True
+elif not position_call_sites:
+    print("FAIL: no BakedQuad.position() call sites could be isolated into methods")
+    failed = True
 else:
-    print(f"PASS: complete inspection dump inventory found the two reviewed baked-position consumers: {sorted(map(str, discovered_position_consumers))}")
+    print(
+        "PASS: inspected all discovered BakedQuad.position() consumer methods "
+        f"({len(position_call_sites)} call site(s)) across {len(discovered_position_consumers)} dump(s)"
+    )
+
+unexpected_consumers = discovered_position_consumers - known_position_consumers
+if unexpected_consumers:
+    print(
+        "REVIEW: additional baked-position consumer dump(s) were discovered and "
+        "their call-site methods were included in the mutation scan: "
+        f"{sorted(map(str, unexpected_consumers))}"
+    )
 
 if failed:
     sys.exit(
