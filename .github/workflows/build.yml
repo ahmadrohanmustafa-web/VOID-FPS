@@ -79,6 +79,9 @@ jobs:
         continue-on-error: true
         run: python3 tools/inspect_targets.py --bytecode --out build/void-fps-inspect
 
+      - name: Verify existing vanilla render caches
+        run: python3 tools/verify_vanilla_caches.py
+
       - name: Dump native vertex output APIs
         if: always()
         continue-on-error: true
