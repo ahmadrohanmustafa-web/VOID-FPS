@@ -186,12 +186,12 @@ else:
 # may reorder array references but must not mutate the vectors themselves.
 quad_bake = method_body(
     face_bakery,
-    r"public static net\\.minecraft\\.client\\.resources\\.model\\.geometry\\.BakedQuad bakeQuad\\(net\\.minecraft\\.client\\.resources\\.model\\.ModelBaker\\$Interner,",
+    r"public static net\.minecraft\.client\.resources\.model\.geometry\.BakedQuad bakeQuad\(net\.minecraft\.client\.resources\.model\.ModelBaker\$Interner,",
 )
-calculate_facing = method_body(face_bakery, r"private static net\\.minecraft\\.core\\.Direction calculateFacing\\(")
-find_closest_direction = method_body(face_bakery, r"private static net\\.minecraft\\.core\\.Direction findClosestDirection\\(")
-find_vertex = method_body(face_bakery, r"private static int findVertex\\(")
-position_swap = method_body(face_bakery, r"private static void swap\\(org\\.joml\\.Vector3fc\\[\\],")
+calculate_facing = method_body(face_bakery, r"private static net\.minecraft\.core\.Direction calculateFacing\(")
+find_closest_direction = method_body(face_bakery, r"private static net\.minecraft\.core\.Direction findClosestDirection\(")
+find_vertex = method_body(face_bakery, r"private static int findVertex\(")
+position_swap = method_body(face_bakery, r"private static void swap\(org\.joml\.Vector3fc\[\],")
 if not all((quad_bake, calculate_facing, find_closest_direction, find_vertex, position_swap)):
     print("FAIL: could not isolate all post-intern FaceBakery methods")
     failed = True
@@ -213,7 +213,7 @@ else:
     )):
         print("FAIL: calculateFacing no longer writes its normal into a separate temporary Vector3f")
         failed = True
-    elif re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", find_closest_direction):
+    elif re.search(r"Vector3f\.(?:set|add|sub|mul|div|normalize):", find_closest_direction):
         print("FAIL: findClosestDirection contains a mutable Vector3f operation")
         failed = True
     elif not all(marker in find_vertex for marker in (
@@ -221,7 +221,7 @@ else:
     )):
         print("FAIL: findVertex no longer compares positions through read-only Vector3fc accessors")
         failed = True
-    elif "aastore" not in position_swap or re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", position_swap):
+    elif "aastore" not in position_swap or re.search(r"Vector3f\.(?:set|add|sub|mul|div|normalize):", position_swap):
         print("FAIL: position-array swap is no longer reference-only")
         failed = True
     else:
