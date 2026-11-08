@@ -39,6 +39,8 @@ TARGET_SIMPLE_NAMES = [
     "BlockStateModel",
     "ModelBaker",
     "BlockModel",
+    "SingleVariant",
+    "WeightedVariants",
     "QuadCollection",
     "BakedQuad",
     "ChunkSectionLayer",
