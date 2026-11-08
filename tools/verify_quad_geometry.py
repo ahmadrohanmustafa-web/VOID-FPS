@@ -110,12 +110,12 @@ else:
     rethrow_index = section_compile.find("athrow", handler_index)
     exception_table = section_compile[exception_index:] if exception_index >= 0 else ""
     clear_instruction = re.search(
-        r"^\\s*(\\d+):\\s+invokestatic\\s+#[0-9]+\\s+// Method net/minecraft/client/renderer/block/BlockModelLighter\\.clearCache:",
+        r"^\s*(\d+):\s+invokestatic\s+#[0-9]+\s+// Method net/minecraft/client/renderer/block/BlockModelLighter\.clearCache:",
         section_compile,
         re.MULTILINE,
     )
     protected_range = re.search(
-        r"^\\s*(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+Class java/lang/Throwable\\s*$",
+        r"^\s*(\d+)\s+(\d+)\s+(\d+)\s+Class java/lang/Throwable\s*$",
         exception_table,
         re.MULTILINE,
     )
