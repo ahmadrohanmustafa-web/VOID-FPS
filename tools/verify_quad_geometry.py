@@ -199,7 +199,7 @@ else:
     bake_markers = [
         "new           #35                 // class net/minecraft/client/resources/model/ModelBakery$InternerImpl",
         "ModelBakery$MissingModels.bake:",
-        "ModelBakery$ModelBakerImpl.<init>:",
+        'ModelBakery$ModelBakerImpl."<init>":',
     ]
     bake_positions = [bake_models.find(marker) for marker in bake_markers]
     if any(position < 0 for position in bake_positions) or bake_positions != sorted(bake_positions):
