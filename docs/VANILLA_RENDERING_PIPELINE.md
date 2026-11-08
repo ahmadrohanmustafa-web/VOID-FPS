@@ -81,3 +81,18 @@ Before intercepting vanilla rendering, the integration must:
 6. Compare generated per-vertex output with vanilla in a runtime Minecraft 26.3 test before enabling the path by default.
 
 A successful Gradle build or bytecode-inspection workflow is not proof that the mod loads in Minecraft, preserves visuals, or improves FPS. Benchmarking is a separate final gate.
+
+## Quad geometry preparation: reuse is not yet safe to assume
+
+Build #324's Minecraft 26.3 bytecode artifact shows that `BlockModelLighter.prepareQuadShape(...)` reads all four positions from each `BakedQuad`, computes min/max X/Y/Z with `Math.min` and `Math.max`, then derives two mutable flags:
+
+- `facePartial` is based on face-specific bounds and the 0.0001 / 0.9999 tolerances.
+- `faceCubic` is based on the quad direction, matching bounds on the two in-plane axes, edge placement, and `BlockState.isCollisionShapeFullBlock(world, pos)`.
+
+Both AO and flat preparation call this helper. The helper's results are stored on the `BlockModelLighter` instance and immediately influence later lighting-position selection. Therefore, caching only six bounds is not equivalent to caching the final flags: `faceCubic` depends on the current block state, world, and position. A quad-only key cannot safely supply that flag.
+
+The inspected `BakedQuad` record stores four `Vector3fc` references directly and its constructor bytecode shows no defensive copy. The interface is read-only, but that alone does not prove that every supplied implementation is immutable for its full lifetime. Any future geometry cache must either establish immutable baked-quad lifetime/identity guarantees or snapshot the 12 coordinate values into an immutable key/value. It must not assume object identity implies permanent geometry.
+
+**Current conclusion:** the four-vertex bounds loop is a plausible repeated cost, but no safe speedup has been demonstrated. We have not established that the same quad instance is prepared repeatedly enough to amortize a cache, that its coordinates are immutable, or that a cache would outperform four direct reads and six min/max reductions. Do not add a production cache or skip native preparation on this evidence alone.
+
+The CI verifier `tools/verify_quad_geometry.py` checks these bytecode assumptions against the Minecraft 26.3 artifact. It is a drift detector, not a performance test or proof of rendering equivalence. Production rendering remains disabled.
