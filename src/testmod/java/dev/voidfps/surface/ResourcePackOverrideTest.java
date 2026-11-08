@@ -75,9 +75,26 @@ final class ResourcePackOverrideTest {
                         if (failure == null) {
                             try {
                                 verifyOverride(minecraft, vanillaStone);
-                            } catch (RuntimeException | Error verificationFailure) {
+                                writePartialGeometryOverride(packDirectory);
+                            } catch (IOException | RuntimeException | Error verificationFailure) {
                                 failure = verificationFailure;
                             }
+                        }
+                        if (failure == null) {
+                            minecraft.reloadResourcePacks().whenComplete((partialIgnored, partialReloadFailure) ->
+                                    minecraft.execute(() -> {
+                                        Throwable partialFailure = partialReloadFailure;
+                                        if (partialFailure == null) {
+                                            try {
+                                                verifyPartialGeometryOverride(minecraft);
+                                            } catch (RuntimeException | Error verificationFailure) {
+                                                partialFailure = verificationFailure;
+                                            }
+                                        }
+                                        restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                partialFailure, onSuccess);
+                                    }));
+                            return;
                         }
                         restore(minecraft, repository, originalSelectedIds, packDirectory,
                                 failure, onSuccess);
@@ -164,6 +181,65 @@ final class ResourcePackOverrideTest {
         System.out.println("VOID FPS real resource-pack override passed: selected through PackRepository, "
                 + "Minecraft reload completed, stone model snapshot differs from vanilla, "
                 + "six-face full-cube geometry remains eligible");
+    }
+
+    /**
+     * Replaces the same live folder-pack model with a deliberately partial cube.
+     * The real reload must expose that geometry and the native eligibility gate
+     * must reject it, proving resource-pack custom geometry stays on vanilla.
+     */
+    private static void writePartialGeometryOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 8, 16],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with deliberate half-height geometry");
+    }
+
+    private static void verifyPartialGeometryOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after partial-geometry resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot partial = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (partial.isEmpty()) {
+            throw new IllegalStateException("Partial-geometry resource-pack override produced an empty snapshot");
+        }
+        if (partial.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("Half-height resource-pack geometry incorrectly passed full-cube geometry gate");
+        }
+        if (!partial.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Partial-geometry fixture unexpectedly changed plain solid material semantics");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, partial);
+        if (eligibility.supported()
+                || !"native model is not exactly one unit boundary quad per face".equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Partial-geometry resource-pack model was not rejected by the native geometry gate: "
+                            + eligibility);
+        }
+        System.out.println("VOID FPS real partial-geometry resource-pack override passed: live reload exposed half-height model and native eligibility required vanilla fallback");
     }
 
     private static void restore(
