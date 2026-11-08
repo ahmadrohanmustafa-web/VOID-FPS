@@ -293,8 +293,15 @@ known_position_consumers = {
 discovered_position_consumers = set()
 position_call_sites = []
 mutator_pattern = re.compile(
-    r"org/joml/Vector3f\\.(?:set|add|sub|mul|div|normalize):"
+    r"org/joml/Vector3f\.(?:set|add|sub|mul|div|normalize):"
 )
+# Guard the audit itself: a bytecode comment containing a real JOML mutator
+# must match, while a read-only Vector3fc accessor must not.
+if not mutator_pattern.search("invokevirtual #1 // Method org/joml/Vector3f.set:(FFF)Lorg/joml/Vector3f;"):
+    sys.exit("FAIL: baked-position mutator detector missed a Vector3f.set bytecode reference")
+if mutator_pattern.search("invokeinterface #2 // InterfaceMethod org/joml/Vector3fc.x:()F"):
+    sys.exit("FAIL: baked-position mutator detector incorrectly matched a read-only Vector3fc accessor")
+print("PASS: baked-position mutator detector regression checks")
 
 seen_consumer_dump_names = set()
 dump_paths = sorted(
