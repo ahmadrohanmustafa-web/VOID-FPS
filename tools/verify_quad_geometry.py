@@ -329,7 +329,7 @@ for dump_path in dump_paths:
     def inspect_current_method():
         if current_header is None:
             return
-        body = "\\n".join(current_body)
+        body = "\n".join(current_body)
         if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in body:
             return True
         label = f"{relative_path}:{current_header.strip()}"
@@ -406,19 +406,19 @@ joml_matrix = joml_matrix_path.read_text(errors="replace")
 pose_stack_pose = pose_stack_pose_path.read_text(errors="replace")
 transform_position_fc = method_body(
     joml_matrix,
-    r"public org\\.joml\\.Vector3f transformPosition\\(org\\.joml\\.Vector3fc, org\\.joml\\.Vector3f\\);",
+    r"public org\.joml\.Vector3f transformPosition\(org\.joml\.Vector3fc, org\.joml\.Vector3f\);",
 )
 transform_position_scalars = method_body(
     joml_matrix,
-    r"public org\\.joml\\.Vector3f transformPosition\\(float, float, float, org\\.joml\\.Vector3f\\);",
+    r"public org\.joml\.Vector3f transformPosition\(float, float, float, org\.joml\.Vector3f\);",
 )
 transform_normal_fc = method_body(
     pose_stack_pose,
-    r"public org\\.joml\\.Vector3f transformNormal\\(org\\.joml\\.Vector3fc, org\\.joml\\.Vector3f\\);",
+    r"public org\.joml\.Vector3f transformNormal\(org\.joml\.Vector3fc, org\.joml\.Vector3f\);",
 )
 transform_normal_scalars = method_body(
     pose_stack_pose,
-    r"public org\\.joml\\.Vector3f transformNormal\\(float, float, float, org\\.joml\\.Vector3f\\);",
+    r"public org\.joml\.Vector3f transformNormal\(float, float, float, org\.joml\.Vector3f\);",
 )
 if not all((transform_position_fc, transform_position_scalars, transform_normal_fc, transform_normal_scalars)):
     print("FAIL: could not isolate JOML position and PoseStack normal helper implementations")
