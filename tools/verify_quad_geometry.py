@@ -13,8 +13,10 @@ builder_path = inspection_root / "QuadCollection$Builder.bytecode.txt"
 interner_path = inspection_root / "ModelBakery$InternerImpl.bytecode.txt"
 face_bakery_path = inspection_root / "FaceBakery.bytecode.txt"
 vertex_output_path = inspection_root / "vertex-output.bytecode.txt"
+model_bakery_path = inspection_root / "ModelBakery.bytecode.txt"
+model_baker_impl_path = inspection_root / "ModelBakery$ModelBakerImpl.bytecode.txt"
 
-required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path)
+required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path, model_bakery_path, model_baker_impl_path)
 missing_files = [str(path) for path in required_paths if not path.is_file()]
 if missing_files:
     sys.exit("Missing required vanilla bytecode dump(s): " + ", ".join(missing_files))
@@ -26,6 +28,8 @@ builder = builder_path.read_text(errors="replace")
 interner = interner_path.read_text(errors="replace")
 face_bakery = face_bakery_path.read_text(errors="replace")
 vertex_output = vertex_output_path.read_text(errors="replace")
+model_bakery = model_bakery_path.read_text(errors="replace")
+model_baker_impl = model_baker_impl_path.read_text(errors="replace")
 
 
 def method_body(source: str, signature_pattern: str) -> str | None:
@@ -174,6 +178,41 @@ else:
         failed = True
     else:
         print("PASS: recalculateWinding operates on Vector3fc references and packed UV data, not Vector3f mutators")
+
+
+# Verify the interner's ownership scope. Minecraft creates one interner inside
+# each bakeModels invocation, passes that same instance into missing-model
+# baking and ModelBakerImpl, and stores it in ModelBakerImpl for the bake.
+bake_models = method_body(model_bakery, r"public java\.util\.concurrent\.CompletableFuture.* bakeModels\(")
+baker_constructor = method_body(
+    model_baker_impl,
+    r"private net\.minecraft\.client\.resources\.model\.ModelBakery\$ModelBakerImpl\("
+)
+baker_interner_accessor = method_body(
+    model_baker_impl,
+    r"public net\.minecraft\.client\.resources\.model\.ModelBaker\$Interner interner\("
+)
+if not all((bake_models, baker_constructor, baker_interner_accessor)):
+    print("FAIL: could not isolate ModelBakery bake scope and ModelBakerImpl interner ownership")
+    failed = True
+else:
+    bake_markers = [
+        "new           #35                 // class net/minecraft/client/resources/model/ModelBakery$InternerImpl",
+        "ModelBakery$MissingModels.bake:",
+        "ModelBakery$ModelBakerImpl.<init>:",
+    ]
+    bake_positions = [bake_models.find(marker) for marker in bake_markers]
+    if any(position < 0 for position in bake_positions) or bake_positions != sorted(bake_positions):
+        print("FAIL: bakeModels no longer creates and passes one interner through the expected bake path")
+        failed = True
+    elif "putfield      #38                 // Field interner:Lnet/minecraft/client/resources/model/ModelBaker$Interner;" not in baker_constructor:
+        print("FAIL: ModelBakerImpl no longer stores the supplied interner in its instance field")
+        failed = True
+    elif "getfield      #38                 // Field interner:Lnet/minecraft/client/resources/model/ModelBaker$Interner;" not in baker_interner_accessor:
+        print("FAIL: ModelBakerImpl interner() no longer returns its stored interner")
+        failed = True
+    else:
+        print("PASS: one bakeModels invocation creates an interner shared with its ModelBakerImpl; it is not a ModelBakery instance field")
 
 # Audit the inspected vanilla consumers of BakedQuad.position().
 # They must read Vector3fc coordinates or transform into a separate destination,
