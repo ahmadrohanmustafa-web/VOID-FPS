@@ -87,6 +87,22 @@ else:
     else:
         print("PASS: vanilla lighting cache is thread-local and disable clears its retained entries")
 
+    # A failed section compile can bypass disable(). Check whether the next
+    # compile's enable() starts with a clean cache or simply reuses retained
+    # entries. This is a vanilla lifecycle limitation, not permission for VOID
+    # FPS to share cache state across aborted compiles.
+    if "putfield      #42                 // Field enabled:Z" not in cache_enable or any(
+        marker in cache_enable
+        for marker in (
+            "Long2IntLinkedOpenHashMap.clear:",
+            "Long2FloatLinkedOpenHashMap.clear:",
+        )
+    ):
+        print("FAIL: BlockModelLighter.Cache.enable lifecycle changed; review cache reset behavior")
+        failed = True
+    else:
+        print("PASS: vanilla Cache.enable only marks the cache enabled; it does not clear entries retained after an aborted compile")
+
     enable_index = section_compile.find("BlockModelLighter.enableCaching:")
     clear_index = section_compile.find("BlockModelLighter.clearCache:")
     exception_index = section_compile.find("Exception table:")
