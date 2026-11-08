@@ -157,12 +157,29 @@ final class ResourcePackOverrideTest {
                                                                              if (tintedFailure == null) {
                                                                                  try {
                                                                                      verifyTintedMaterialOverride(minecraft);
-                                                                                 } catch (RuntimeException | Error verificationFailure) {
+                                                                                     writeRotatedUvOverride(packDirectory);
+                                                                                 } catch (IOException | RuntimeException | Error verificationFailure) {
                                                                                      tintedFailure = verificationFailure;
                                                                                  }
                                                                              }
-                                                                             restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                                                     tintedFailure, onSuccess);
+                                                                             if (tintedFailure != null) {
+                                                                                 restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                         tintedFailure, onSuccess);
+                                                                                 return;
+                                                                             }
+                                                                             minecraft.reloadResourcePacks().whenComplete((uvIgnored, uvReloadFailure) ->
+                                                                                     minecraft.execute(() -> {
+                                                                                         Throwable uvFailure = uvReloadFailure;
+                                                                                         if (uvFailure == null) {
+                                                                                             try {
+                                                                                                 verifyRotatedUvOverride(minecraft);
+                                                                                             } catch (RuntimeException | Error verificationFailure) {
+                                                                                                 uvFailure = verificationFailure;
+                                                                                             }
+                                                                                         }
+                                                                                         restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                                 uvFailure, onSuccess);
+                                                                                     }));
                                                                          }));
                                                                         }));
                                                             }));
@@ -599,6 +616,76 @@ final class ResourcePackOverrideTest {
                     "Tinted resource-pack model was not rejected by the native material gate: " + eligibility);
         }
         System.out.println("VOID FPS real tinted-material resource-pack override passed: six-face geometry remained valid but tint metadata required vanilla fallback");
+    }
+
+    private static void writeRotatedUvOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all", "cullface": "down"},
+                        "up": {"texture": "#all", "cullface": "up", "rotation": 90},
+                        "north": {"texture": "#all", "cullface": "north"},
+                        "south": {"texture": "#all", "cullface": "south"},
+                        "west": {"texture": "#all", "cullface": "west"},
+                        "east": {"texture": "#all", "cullface": "east"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with a 90-degree UP-face UV rotation");
+    }
+
+    private static void verifyRotatedUvOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after rotated-UV resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot rotated = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (rotated.isEmpty()) {
+            throw new IllegalStateException("Rotated-UV resource-pack override produced an empty snapshot");
+        }
+        if (!rotated.hasExactlyOneUnitBoundaryQuadPerFace()
+                || !rotated.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("UV-only rotation unexpectedly changed geometry or material eligibility");
+        }
+        NativeModelSnapshot.Snapshot vanilla = NativeModelSnapshot.collect(
+                minecraft.getModelManager().getBlockStateModelSet().get(Blocks.DIRT.defaultBlockState()),
+                RandomSource.create(MODEL_SEED));
+        long[] expected = packedUvForFace(vanilla, net.minecraft.core.Direction.UP);
+        long[] actual = packedUvForFace(rotated, net.minecraft.core.Direction.UP);
+        if (java.util.Arrays.equals(expected, actual)) {
+            throw new IllegalStateException("90-degree UP-face UV rotation did not change the native packed UV coordinates");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, rotated);
+        if (!eligibility.supported()) {
+            throw new IllegalStateException("UV-rotated full-cube model should remain geometry/material eligible: " + eligibility);
+        }
+        System.out.println("VOID FPS real rotated-UV resource-pack override passed: UP-face packed UVs changed, six-face geometry and plain material eligibility remained valid");
+    }
+
+    private static long[] packedUvForFace(
+            NativeModelSnapshot.Snapshot snapshot, net.minecraft.core.Direction direction) {
+        for (NativeModelSnapshot.Part part : snapshot.parts()) {
+            for (NativeModelSnapshot.FaceQuads face : part.directionalQuads()) {
+                if (face.direction() == direction && !face.quads().isEmpty()) {
+                    var quad = face.quads().getFirst();
+                    return new long[] {quad.packedUV(0), quad.packedUV(1), quad.packedUV(2), quad.packedUV(3)};
+                }
+            }
+        }
+        throw new IllegalStateException("Expected directional quad missing for " + direction);
     }
 
     private static void restore(
