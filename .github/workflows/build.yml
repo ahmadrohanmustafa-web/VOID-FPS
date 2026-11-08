@@ -47,6 +47,7 @@ jobs:
           grep -q "VOID FPS real resource-pack override passed: selected through PackRepository, Minecraft reload completed, stone model snapshot differs from vanilla, six-face full-cube geometry remains eligible" build/void-fps-client-smoke.log
           grep -q "VOID FPS real partial-geometry resource-pack override passed: live reload exposed half-height model and native eligibility required vanilla fallback" build/void-fps-client-smoke.log
           grep -q "VOID FPS real internal-geometry resource-pack override passed: live reload exposed enclosed extra element and native eligibility required vanilla fallback" build/void-fps-client-smoke.log
+          grep -q "VOID FPS real unculled-geometry resource-pack override passed: live reload captured unculled quad and native eligibility required vanilla fallback" build/void-fps-client-smoke.log
           grep -q "VOID FPS original resource-pack selection restored and temporary folder removed" build/void-fps-client-smoke.log
           grep -q "VOID FPS native eligibility matrix passed: accepted=10, tintedFallback=grass_block" build/void-fps-client-smoke.log
           grep -q "VOID FPS native fallback matrix passed: modelChecks=5, rejected=6, vanillaFallbackRequired=true" build/void-fps-client-smoke.log
