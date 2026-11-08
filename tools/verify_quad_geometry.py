@@ -25,6 +25,17 @@ builder = builder_path.read_text(errors="replace")
 interner = interner_path.read_text(errors="replace")
 face_bakery = face_bakery_path.read_text(errors="replace")
 
+
+def method_body(source: str, signature_pattern: str) -> str | None:
+    """Return one javap method and its instructions, stopping at the next member."""
+    match = re.search(
+        signature_pattern + r".*?(?=\n  (?:private|public|protected|static|\})|\Z)",
+        source,
+        re.DOTALL,
+    )
+    return match.group(0) if match else None
+
+
 checks = {
     "BlockModelLighter.prepareQuadShape": (
         lighter,
@@ -104,8 +115,8 @@ else:
     print("PASS: QuadCollection.Builder uses immutable-list construction and directional sublists")
 
 constructor = re.search(
-    r"public net\.minecraft\.client\.resources\.model\.geometry\.BakedQuad\(.*?"
-    r"\n  public org\.joml\.Vector3fc position\(int\);",
+    r"public net\\.minecraft\\.client\\.resources\\.model\\.geometry\\.BakedQuad\\(.*?"
+    r"\\n  public org\\.joml\\.Vector3fc position\\(int\\);",
     quad,
     re.DOTALL,
 )
@@ -120,6 +131,48 @@ else:
     else:
         print("PASS: BakedQuad constructor stores Vector3fc references without a visible defensive copy")
 
+bake_vertex = method_body(face_bakery, r"private static void bakeVertex\\(")
+rotate_vertex = method_body(face_bakery, r"private static void rotateVertexBy\\(")
+recalculate_winding = method_body(face_bakery, r"private static void recalculateWinding\\(")
+if not all((bake_vertex, rotate_vertex, recalculate_winding)):
+    print("FAIL: could not isolate FaceBakery vertex transformation/winding methods")
+    failed = True
+else:
+    interner_call = bake_vertex.find("ModelBaker$Interner.vector:")
+    transform_markers = [
+        "Vector3f.div:(F)Lorg/joml/Vector3f;",
+        "rotateVertexBy:(Lorg/joml/Vector3f;Lorg/joml/Vector3fc;Lorg/joml/Matrix4fc;)V",
+        "ModelBaker$Interner.vector:",
+        "aastore",
+    ]
+    positions = [bake_vertex.find(marker) for marker in transform_markers]
+    if any(position < 0 for position in positions) or positions != sorted(positions):
+        print("FAIL: FaceBakery vertex transform/interner sequence changed or is incomplete")
+        failed = True
+    elif re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", bake_vertex[interner_call:]):
+        print("FAIL: mutable Vector3f operation appears after interning in bakeVertex")
+        failed = True
+    else:
+        print("PASS: bakeVertex applies its direct transforms before interning and stores the returned reference")
+
+    rotate_markers = [
+        "Vector3f.sub:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
+        "Matrix4fc.transformPosition:(Lorg/joml/Vector3f;)Lorg/joml/Vector3f;",
+        "Vector3f.add:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
+    ]
+    rotate_positions = [rotate_vertex.find(marker) for marker in rotate_markers]
+    if any(position < 0 for position in rotate_positions) or rotate_positions != sorted(rotate_positions):
+        print("FAIL: rotateVertexBy mutation sequence changed or is incomplete")
+        failed = True
+    else:
+        print("PASS: rotateVertexBy mutates the fresh vertex before it reaches the interner")
+
+    if "Vector3f." in recalculate_winding or "Vector3f;" in recalculate_winding:
+        print("FAIL: recalculateWinding now references concrete mutable Vector3f operations; review manually")
+        failed = True
+    else:
+        print("PASS: recalculateWinding operates on Vector3fc references and packed UV data, not Vector3f mutators")
+
 if failed:
     sys.exit(
         "Quad geometry inspection changed or is incomplete; "
@@ -127,6 +180,7 @@ if failed:
     )
 
 print(
-    "VOID FPS quad-geometry inspection passed: FaceBakery bakes mutable Vector3f instances into BakedQuad positions through a strong interner; "
-    "the interner reuses references but does not establish vector immutability, and faceCubic remains state-dependent."
+    "VOID FPS quad-geometry inspection passed: FaceBakery transforms each fresh mutable Vector3f before interning it, "
+    "then stores the returned Vector3fc reference. This only verifies the inspected baking path; it does not prove "
+    "global immutability or rule out mutation through other code. faceCubic also remains state-dependent."
 )
