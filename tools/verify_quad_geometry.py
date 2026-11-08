@@ -196,14 +196,35 @@ if not all((bake_models, baker_constructor, baker_interner_accessor)):
     print("FAIL: could not isolate ModelBakery bake scope and ModelBakerImpl interner ownership")
     failed = True
 else:
-    bake_markers = [
-        "new           #35                 // class net/minecraft/client/resources/model/ModelBakery$InternerImpl",
-        "ModelBakery$MissingModels.bake:",
-        'ModelBakery$ModelBakerImpl."<init>":',
+    interner_creation = re.findall(
+        r"^\s*\d+: new\s+#[0-9]+\s+// class net/minecraft/client/resources/model/ModelBakery\\$InternerImpl$",
+        bake_models,
+        re.MULTILINE,
+    )
+    missing_model_call = re.search(
+        r"^\s*\d+: aload_3\\s*$.*?ModelBakery\\$MissingModels\\.bake:",
+        bake_models,
+        re.MULTILINE | re.DOTALL,
+    )
+    model_baker_call = re.search(
+        r"^\s*\d+: aload_3\\s*$.*?ModelBakery\\$ModelBakerImpl\\.\"<init>\":",
+        bake_models,
+        re.MULTILINE | re.DOTALL,
+    )
+    model_bakery_fields = model_bakery.split(
+        "  public java.util.concurrent.CompletableFuture", 1
+    )[0]
+    interner_fields = [
+        line.strip()
+        for line in model_bakery_fields.splitlines()
+        if re.match(r"\\s+(?:private|protected|public)\\s+.*;", line)
+        and "ModelBaker$Interner" in line
     ]
-    bake_positions = [bake_models.find(marker) for marker in bake_markers]
-    if any(position < 0 for position in bake_positions) or bake_positions != sorted(bake_positions):
-        print("FAIL: bakeModels no longer creates and passes one interner through the expected bake path")
+    if len(interner_creation) != 1 or missing_model_call is None or model_baker_call is None:
+        print("FAIL: bakeModels no longer creates exactly one interner and passes the same local reference to both bake paths")
+        failed = True
+    elif interner_fields:
+        print(f"FAIL: ModelBakery now retains an interner in an instance/static field: {interner_fields}")
         failed = True
     elif "putfield      #38                 // Field interner:Lnet/minecraft/client/resources/model/ModelBaker$Interner;" not in baker_constructor:
         print("FAIL: ModelBakerImpl no longer stores the supplied interner in its instance field")
@@ -212,7 +233,7 @@ else:
         print("FAIL: ModelBakerImpl interner() no longer returns its stored interner")
         failed = True
     else:
-        print("PASS: one bakeModels invocation creates an interner shared with its ModelBakerImpl; it is not a ModelBakery instance field")
+        print("PASS: bakeModels creates exactly one interner, passes the same local reference to both bake paths, and ModelBakery has no interner field")
 
 # Audit the inspected vanilla consumers of BakedQuad.position().
 # They must read Vector3fc coordinates or transform into a separate destination,
