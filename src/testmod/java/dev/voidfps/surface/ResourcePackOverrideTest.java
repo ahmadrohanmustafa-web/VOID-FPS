@@ -87,12 +87,29 @@ final class ResourcePackOverrideTest {
                                         if (partialFailure == null) {
                                             try {
                                                 verifyPartialGeometryOverride(minecraft);
-                                            } catch (RuntimeException | Error verificationFailure) {
+                                                writeInternalGeometryOverride(packDirectory);
+                                            } catch (IOException | RuntimeException | Error verificationFailure) {
                                                 partialFailure = verificationFailure;
                                             }
                                         }
-                                        restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                partialFailure, onSuccess);
+                                        if (partialFailure != null) {
+                                            restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                    partialFailure, onSuccess);
+                                            return;
+                                        }
+                                        minecraft.reloadResourcePacks().whenComplete((internalIgnored, internalReloadFailure) ->
+                                                minecraft.execute(() -> {
+                                                    Throwable internalFailure = internalReloadFailure;
+                                                    if (internalFailure == null) {
+                                                        try {
+                                                            verifyInternalGeometryOverride(minecraft);
+                                                        } catch (RuntimeException | Error verificationFailure) {
+                                                            internalFailure = verificationFailure;
+                                                        }
+                                                    }
+                                                    restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                            internalFailure, onSuccess);
+                                                }));
                                     }));
                             return;
                         }
@@ -240,6 +257,77 @@ final class ResourcePackOverrideTest {
                             + eligibility);
         }
         System.out.println("VOID FPS real partial-geometry resource-pack override passed: live reload exposed half-height model and native eligibility required vanilla fallback");
+    }
+
+    /**
+     * Adds a second, fully enclosed element inside a full-sized cube. The
+     * model still has all six outer boundary faces, but also contains internal
+     * geometry that a surface-only renderer must never silently discard.
+     */
+    private static void writeInternalGeometryOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    },
+                    {
+                      "from": [4, 4, 4],
+                      "to": [12, 12, 12],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with an enclosed internal element");
+    }
+
+    private static void verifyInternalGeometryOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after internal-geometry resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot internal = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (internal.isEmpty()) {
+            throw new IllegalStateException("Internal-geometry resource-pack override produced an empty snapshot");
+        }
+        if (internal.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("Model with an enclosed internal element incorrectly passed full-cube geometry gate");
+        }
+        if (!internal.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Internal-geometry fixture unexpectedly changed plain solid material semantics");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, internal);
+        if (eligibility.supported()
+                || !"native model is not exactly one unit boundary quad per face".equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Internal-geometry resource-pack model was not rejected by the native geometry gate: "
+                            + eligibility);
+        }
+        System.out.println("VOID FPS real internal-geometry resource-pack override passed: live reload exposed enclosed extra element and native eligibility required vanilla fallback");
     }
 
     private static void restore(
