@@ -64,7 +64,7 @@ checks = {
 # so its result must never be reused as if it were a property of BakedQuad alone.
 prepare_quad_shape = method_body(
     lighter,
-    r"private void prepareQuadShape\\(",
+    r"private void prepareQuadShape\(",
 )
 if prepare_quad_shape is None:
     print("FAIL: could not isolate BlockModelLighter.prepareQuadShape")
