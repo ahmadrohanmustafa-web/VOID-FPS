@@ -444,22 +444,26 @@ else:
         "Matrix3f.transform:(FFFLorg/joml/Vector3f;)Lorg/joml/Vector3f;",
         "Vector3f.normalize:()Lorg/joml/Vector3f;",
     )
-    if not all(x in transform_position_fc for x in position_source_reads):
-        print("FAIL: Matrix4f.transformPosition(Vector3fc, Vector3f) no longer reads all source components before scalar delegation")
+
+    def markers_in_order(body: str, markers: tuple[str, ...]) -> bool:
+        positions = [body.find(marker) for marker in markers]
+        return all(position >= 0 for position in positions) and positions == sorted(positions)
+
+    if not markers_in_order(transform_position_fc, position_source_reads):
+        print("FAIL: Matrix4f.transformPosition(Vector3fc, Vector3f) no longer reads X/Y/Z before scalar delegation")
         failed = True
-    elif not all(x in transform_position_scalars for x in position_destination_writes):
-        print("FAIL: Matrix4f scalar transformPosition no longer writes/transforms the supplied destination")
+    elif not markers_in_order(transform_position_scalars, position_destination_writes):
+        print("FAIL: Matrix4f scalar transformPosition no longer sets the destination before applying the matrix")
         failed = True
-    elif not all(x in transform_normal_fc for x in normal_source_reads):
-        print("FAIL: PoseStack.Pose.transformNormal(Vector3fc, Vector3f) no longer reads all source components before scalar delegation")
+    elif not markers_in_order(transform_normal_fc, normal_source_reads):
+        print("FAIL: PoseStack.Pose.transformNormal(Vector3fc, Vector3f) no longer reads X/Y/Z before scalar delegation")
         failed = True
-    elif not all(x in transform_normal_scalars for x in normal_destination_writes):
-        print("FAIL: PoseStack.Pose scalar transformNormal no longer transforms and normalizes the supplied destination")
+    elif not markers_in_order(transform_normal_scalars, normal_destination_writes):
+        print("FAIL: PoseStack.Pose scalar transformNormal no longer transforms the destination before optional normalization")
         failed = True
     else:
-        print("PASS: JOML transformPosition reads Vector3fc source components and mutates only the separate Vector3f destination")
-        print("PASS: PoseStack transformNormal reads Vector3fc source components and transforms/normalizes the separate Vector3f destination")
-
+        print("PASS: JOML transformPosition snapshots source X/Y/Z before writing the destination, including when source and destination alias")
+        print("PASS: PoseStack transformNormal snapshots source X/Y/Z before transforming/normalizing the destination, including when source and destination alias")
 if failed:
     sys.exit(
         "Quad geometry inspection changed or is incomplete; "
