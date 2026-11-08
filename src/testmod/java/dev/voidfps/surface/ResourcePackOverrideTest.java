@@ -119,12 +119,29 @@ final class ResourcePackOverrideTest {
                                                                 if (unculledFailure == null) {
                                                                     try {
                                                                         verifyUnculledGeometryOverride(minecraft);
-                                                                    } catch (RuntimeException | Error verificationFailure) {
+                                                                        writeDuplicateBoundaryGeometryOverride(packDirectory);
+                                                                    } catch (IOException | RuntimeException | Error verificationFailure) {
                                                                         unculledFailure = verificationFailure;
                                                                     }
                                                                 }
-                                                                restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                                        unculledFailure, onSuccess);
+                                                                if (unculledFailure != null) {
+                                                                    restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                            unculledFailure, onSuccess);
+                                                                    return;
+                                                                }
+                                                                minecraft.reloadResourcePacks().whenComplete((duplicateIgnored, duplicateReloadFailure) ->
+                                                                        minecraft.execute(() -> {
+                                                                            Throwable duplicateFailure = duplicateReloadFailure;
+                                                                            if (duplicateFailure == null) {
+                                                                                try {
+                                                                                    verifyDuplicateBoundaryGeometryOverride(minecraft);
+                                                                                } catch (RuntimeException | Error verificationFailure) {
+                                                                                    duplicateFailure = verificationFailure;
+                                                                                }
+                                                                            }
+                                                                            restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                    duplicateFailure, onSuccess);
+                                                                        }));
                                                             }));
                                                 }));
                                     }));
@@ -418,6 +435,88 @@ final class ResourcePackOverrideTest {
         }
         System.out.println("VOID FPS real unculled-geometry resource-pack override passed: live reload captured unculled quad and native eligibility required vanilla fallback, unculledQuads="
                 + unculledCount);
+    }
+
+    /**
+     * Duplicates a full-cube element. Every face remains on a unit boundary,
+     * but each direction now has two competing quads; the surface gate must
+     * reject this rather than silently discard one copy.
+     */
+    private static void writeDuplicateBoundaryGeometryOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    },
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with duplicate boundary faces");
+    }
+
+    private static void verifyDuplicateBoundaryGeometryOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after duplicate-boundary resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot snapshot = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (snapshot.isEmpty()) {
+            throw new IllegalStateException("Duplicate-boundary resource-pack override produced an empty snapshot");
+        }
+        int directionalCount = snapshot.parts().stream()
+                .flatMap(part -> part.directionalQuads().stream())
+                .mapToInt(face -> face.quads().size())
+                .sum();
+        if (directionalCount != 12) {
+            throw new IllegalStateException(
+                    "Duplicate-boundary fixture should expose exactly 12 directional quads; got " + directionalCount);
+        }
+        if (!snapshot.parts().stream().allMatch(part -> part.unculledQuads().isEmpty())) {
+            throw new IllegalStateException("Duplicate-boundary fixture unexpectedly introduced unculled quads");
+        }
+        if (snapshot.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("Duplicate boundary faces incorrectly passed the one-quad-per-face gate");
+        }
+        if (!snapshot.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Duplicate-boundary fixture unexpectedly changed plain solid material semantics");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, snapshot);
+        if (eligibility.supported()
+                || !"native model is not exactly one unit boundary quad per face".equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Duplicate-boundary resource-pack model was not rejected by the native geometry gate: "
+                            + eligibility);
+        }
+        System.out.println("VOID FPS real duplicate-boundary resource-pack override passed: live reload exposed 12 boundary quads and native eligibility required vanilla fallback");
     }
 
     private static void restore(
