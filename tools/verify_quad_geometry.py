@@ -197,17 +197,17 @@ if not all((bake_models, baker_constructor, baker_interner_accessor)):
     failed = True
 else:
     interner_creation = re.findall(
-        r"^\s*\d+: new\s+#[0-9]+\s+// class net/minecraft/client/resources/model/ModelBakery\\$InternerImpl$",
+        r"^\s*\d+: new\s+#[0-9]+\s+// class net/minecraft/client/resources/model/ModelBakery\$InternerImpl$",
         bake_models,
         re.MULTILINE,
     )
     missing_model_call = re.search(
-        r"^\s*\d+: aload_3\\s*$.*?ModelBakery\\$MissingModels\\.bake:",
+        r"^\s*\d+: aload_3\s*$.*?ModelBakery\$MissingModels\.bake:",
         bake_models,
         re.MULTILINE | re.DOTALL,
     )
     model_baker_call = re.search(
-        r"^\s*\d+: aload_3\\s*$.*?ModelBakery\\$ModelBakerImpl\\.\"<init>\":",
+        r"^\s*\d+: aload_3\s*$.*?ModelBakery\$ModelBakerImpl\.\"<init>\":",
         bake_models,
         re.MULTILINE | re.DOTALL,
     )
@@ -217,7 +217,7 @@ else:
     interner_fields = [
         line.strip()
         for line in model_bakery_fields.splitlines()
-        if re.match(r"\\s+(?:private|protected|public)\\s+.*;", line)
+        if re.match(r"\s+(?:private|protected|public)\s+.*;", line)
         and "ModelBaker$Interner" in line
     ]
     if len(interner_creation) != 1 or missing_model_call is None or model_baker_call is None:
