@@ -103,12 +103,29 @@ final class ResourcePackOverrideTest {
                                                     if (internalFailure == null) {
                                                         try {
                                                             verifyInternalGeometryOverride(minecraft);
-                                                        } catch (RuntimeException | Error verificationFailure) {
+                                                            writeUnculledGeometryOverride(packDirectory);
+                                                        } catch (IOException | RuntimeException | Error verificationFailure) {
                                                             internalFailure = verificationFailure;
                                                         }
                                                     }
-                                                    restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                            internalFailure, onSuccess);
+                                                    if (internalFailure != null) {
+                                                        restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                internalFailure, onSuccess);
+                                                        return;
+                                                    }
+                                                    minecraft.reloadResourcePacks().whenComplete((unculledIgnored, unculledReloadFailure) ->
+                                                            minecraft.execute(() -> {
+                                                                Throwable unculledFailure = unculledReloadFailure;
+                                                                if (unculledFailure == null) {
+                                                                    try {
+                                                                        verifyUnculledGeometryOverride(minecraft);
+                                                                    } catch (RuntimeException | Error verificationFailure) {
+                                                                        unculledFailure = verificationFailure;
+                                                                    }
+                                                                }
+                                                                restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                        unculledFailure, onSuccess);
+                                                            }));
                                                 }));
                                     }));
                             return;
@@ -328,6 +345,79 @@ final class ResourcePackOverrideTest {
                             + eligibility);
         }
         System.out.println("VOID FPS real internal-geometry resource-pack override passed: live reload exposed enclosed extra element and native eligibility required vanilla fallback");
+    }
+
+    /**
+     * Adds an additional face with no cull direction. Such quads are kept in
+     * the native unculled list and must force vanilla fallback.
+     */
+    private static void writeUnculledGeometryOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "faces": {
+                        "down": {"texture": "#all"},
+                        "up": {"texture": "#all"},
+                        "north": {"texture": "#all"},
+                        "south": {"texture": "#all"},
+                        "west": {"texture": "#all"},
+                        "east": {"texture": "#all"}
+                      }
+                    },
+                    {
+                      "from": [2, 2, 2],
+                      "to": [14, 14, 3],
+                      "faces": {
+                        "north": {"texture": "#all"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with an additional unculled face");
+    }
+
+    private static void verifyUnculledGeometryOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after unculled-geometry resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot snapshot = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (snapshot.isEmpty()) {
+            throw new IllegalStateException("Unculled-geometry resource-pack override produced an empty snapshot");
+        }
+        int unculledCount = snapshot.parts().stream()
+                .mapToInt(part -> part.unculledQuads().size())
+                .sum();
+        if (unculledCount < 1) {
+            throw new IllegalStateException(
+                    "Resource-pack model's face without cullface was not captured as an unculled quad");
+        }
+        if (snapshot.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("Model containing unculled geometry incorrectly passed full-cube geometry gate");
+        }
+        if (!snapshot.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Unculled-geometry fixture unexpectedly changed plain solid material semantics");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, snapshot);
+        if (eligibility.supported()
+                || !"native model is not exactly one unit boundary quad per face".equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Unculled resource-pack model was not rejected by the native geometry gate: "
+                            + eligibility);
+        }
+        System.out.println("VOID FPS real unculled-geometry resource-pack override passed: live reload captured unculled quad and native eligibility required vanilla fallback, unculledQuads="
+                + unculledCount);
     }
 
     private static void restore(
