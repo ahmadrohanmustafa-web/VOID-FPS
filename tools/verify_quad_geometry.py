@@ -184,7 +184,7 @@ for label, source in consumer_sources.items():
         print(f"FAIL: {label} no longer contains the expected baked-position read path")
         failed = True
         continue
-    mutators = re.findall(r"org/joml/Vector3f\\.(?:set|add|sub|mul|div|normalize):", source)
+    mutators = re.findall(r"org/joml/Vector3f\.(?:set|add|sub|mul|div|normalize):", source)
     if mutators:
         print(f"FAIL: {label} contains direct Vector3f mutator calls near baked-quad handling: {mutators}")
         failed = True
