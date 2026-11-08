@@ -180,6 +180,53 @@ else:
         print("PASS: recalculateWinding operates on Vector3fc references and packed UV data, not Vector3f mutators")
 
 
+# Verify the post-intern FaceBakery path. Once bakeVertex has placed
+# interned Vector3fc references in the position array, facing calculation
+# writes its normal into a separate fresh Vector3f, and winding correction
+# may reorder array references but must not mutate the vectors themselves.
+quad_bake = method_body(
+    face_bakery,
+    r"public static net\\.minecraft\\.client\\.resources\\.model\\.geometry\\.BakedQuad bakeQuad\\(net\\.minecraft\\.client\\.resources\\.model\\.ModelBaker\\$Interner,",
+)
+calculate_facing = method_body(face_bakery, r"private static net\\.minecraft\\.core\\.Direction calculateFacing\\(")
+find_closest_direction = method_body(face_bakery, r"private static net\\.minecraft\\.core\\.Direction findClosestDirection\\(")
+find_vertex = method_body(face_bakery, r"private static int findVertex\\(")
+position_swap = method_body(face_bakery, r"private static void swap\\(org\\.joml\\.Vector3fc\\[\\],")
+if not all((quad_bake, calculate_facing, find_closest_direction, find_vertex, position_swap)):
+    print("FAIL: could not isolate all post-intern FaceBakery methods")
+    failed = True
+else:
+    post_bake_markers = [
+        "FaceBakery.bakeVertex:",
+        "FaceBakery.calculateFacing:",
+        "FaceBakery.recalculateWinding:",
+        'BakedQuad."<init>":',
+    ]
+    post_bake_positions = [quad_bake.find(marker) for marker in post_bake_markers]
+    if any(position < 0 for position in post_bake_positions) or post_bake_positions != sorted(post_bake_positions):
+        print("FAIL: FaceBakery post-intern order changed; review before relying on shared vectors")
+        failed = True
+    elif not all(marker in calculate_facing for marker in (
+        "new           #192                // class org/joml/Vector3f",
+        "org/joml/GeometryUtils.normal:",
+        "findClosestDirection:(Lorg/joml/Vector3f;)",
+    )):
+        print("FAIL: calculateFacing no longer writes its normal into a separate temporary Vector3f")
+        failed = True
+    elif re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", find_closest_direction):
+        print("FAIL: findClosestDirection contains a mutable Vector3f operation")
+        failed = True
+    elif not all(marker in find_vertex for marker in (
+        "Vector3fc.x:()F", "Vector3fc.y:()F", "Vector3fc.z:()F"
+    )):
+        print("FAIL: findVertex no longer compares positions through read-only Vector3fc accessors")
+        failed = True
+    elif "aastore" not in position_swap or re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", position_swap):
+        print("FAIL: position-array swap is no longer reference-only")
+        failed = True
+    else:
+        print("PASS: post-intern FaceBakery path reads shared vectors and only reorders references; facing normal uses a separate temporary")
+
 # Verify the interner's ownership scope. Minecraft creates one interner inside
 # each bakeModels invocation, passes that same instance into missing-model
 # baking and ModelBakerImpl, and stores it in ModelBakerImpl for the bake.
