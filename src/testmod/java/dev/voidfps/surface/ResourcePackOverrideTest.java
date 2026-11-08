@@ -453,24 +453,24 @@ final class ResourcePackOverrideTest {
                       "from": [0, 0, 0],
                       "to": [16, 16, 16],
                       "faces": {
-                        "down": {"texture": "#all"},
-                        "up": {"texture": "#all"},
-                        "north": {"texture": "#all"},
-                        "south": {"texture": "#all"},
-                        "west": {"texture": "#all"},
-                        "east": {"texture": "#all"}
+                        "down": {"texture": "#all", "cullface": "down"},
+                        "up": {"texture": "#all", "cullface": "up"},
+                        "north": {"texture": "#all", "cullface": "north"},
+                        "south": {"texture": "#all", "cullface": "south"},
+                        "west": {"texture": "#all", "cullface": "west"},
+                        "east": {"texture": "#all", "cullface": "east"}
                       }
                     },
                     {
                       "from": [0, 0, 0],
                       "to": [16, 16, 16],
                       "faces": {
-                        "down": {"texture": "#all"},
-                        "up": {"texture": "#all"},
-                        "north": {"texture": "#all"},
-                        "south": {"texture": "#all"},
-                        "west": {"texture": "#all"},
-                        "east": {"texture": "#all"}
+                        "down": {"texture": "#all", "cullface": "down"},
+                        "up": {"texture": "#all", "cullface": "up"},
+                        "north": {"texture": "#all", "cullface": "north"},
+                        "south": {"texture": "#all", "cullface": "south"},
+                        "west": {"texture": "#all", "cullface": "west"},
+                        "east": {"texture": "#all", "cullface": "east"}
                       }
                     }
                   ]
