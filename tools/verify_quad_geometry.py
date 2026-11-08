@@ -207,7 +207,8 @@ else:
         re.MULTILINE | re.DOTALL,
     )
     model_baker_call = re.search(
-        r"^\s*\d+: aload_3\s*$.*?ModelBakery\$ModelBakerImpl\.\"<init>\":",
+        r"new\s+#[0-9]+\s+// class net/minecraft/client/resources/model/ModelBakery\$ModelBakerImpl"
+        r".*?^\s*\d+: aload_3\s*$.*?ModelBakery\$ModelBakerImpl\.\"<init>\":",
         bake_models,
         re.MULTILINE | re.DOTALL,
     )
