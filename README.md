@@ -2,7 +2,7 @@
 
 Client-side Fabric project for investigating CPU-side block and terrain rendering work in Minecraft Java Edition **26.3**.
 
-> **Current verdict: no additional optimization is enabled.** Minecraft 26.3 already caches face occlusion, packed light, and shade brightness during section compilation. VOID FPS does not add duplicate caches or replace vanilla rendering.
+> **Current verdict: no additional optimization is enabled.** Minecraft 26.3 already reuses face-occlusion results, directional face checks, tint colors, packed light, and shade brightness during block/section compilation. VOID FPS does not add duplicate caches or replace vanilla rendering.
 
 ## Verified project status
 
@@ -15,15 +15,17 @@ Client-side Fabric project for investigating CPU-side block and terrain renderin
 
 ## Important vanilla optimizations already present
 
-Minecraft 26.3 bytecode confirms multiple caches in the exact path VOID FPS was considering:
+Minecraft 26.3 bytecode confirms multiple caches and reuse guards in the exact path VOID FPS was considering:
 
 1. **Face occlusion:** `Block.shouldRenderFace` uses a thread-local 256-entry access-ordered cache keyed by pairs of face-occlusion shapes. It performs the expensive shape join only on a cache miss.
 2. **Packed light and shade brightness:** `BlockModelLighter.Cache` uses thread-local linked maps with 100-entry limits for packed-light and shade-brightness results.
 3. **Section lifecycle:** `SectionCompiler.compile` enables the lighting cache before compiling a section and clears it at the end of the normal compile path.
+4. **Directional face checks:** `ModelBlockRenderer` tracks checked and visible directions with bit masks during ambient-occlusion tessellation, avoiding repeated neighbor checks for a direction across model parts.
+5. **Tint reuse:** `ModelBlockRenderer` keeps tint-source results for the current block and has a last-index/last-color fast path, so repeated tint requests need not recompute the color.
 
-A CI bytecode verifier now checks these details. If Minecraft changes these internals, the check fails and requires a fresh review rather than silently relying on an outdated assumption.
+The CI bytecode verifier checks these details. If Minecraft changes these internals, the check fails and requires a fresh review rather than silently relying on an outdated assumption.
 
-Adding a second cache for these same calculations is not a justified optimization. It can duplicate lookups, memory, and invalidation complexity.
+Adding second caches for these same calculations is not a justified optimization. It can duplicate lookups, memory, and invalidation complexity. The current investigation therefore moves on to per-quad geometry and AO preparation, where the bytecode shows work is performed for each baked quad; any optimization there must preserve exact output and be measured before it is considered.
 
 ## Scope
 
