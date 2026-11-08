@@ -115,8 +115,8 @@ else:
     print("PASS: QuadCollection.Builder uses immutable-list construction and directional sublists")
 
 constructor = re.search(
-    r"public net\\.minecraft\\.client\\.resources\\.model\\.geometry\\.BakedQuad\\(.*?"
-    r"\\n  public org\\.joml\\.Vector3fc position\\(int\\);",
+    r"public net\.minecraft\.client\.resources\.model\.geometry\.BakedQuad\(.*?"
+    r"\n  public org\.joml\.Vector3fc position\(int\);",
     quad,
     re.DOTALL,
 )
@@ -131,9 +131,9 @@ else:
     else:
         print("PASS: BakedQuad constructor stores Vector3fc references without a visible defensive copy")
 
-bake_vertex = method_body(face_bakery, r"private static void bakeVertex\\(")
-rotate_vertex = method_body(face_bakery, r"private static void rotateVertexBy\\(")
-recalculate_winding = method_body(face_bakery, r"private static void recalculateWinding\\(")
+bake_vertex = method_body(face_bakery, r"private static void bakeVertex\(")
+rotate_vertex = method_body(face_bakery, r"private static void rotateVertexBy\(")
+recalculate_winding = method_body(face_bakery, r"private static void recalculateWinding\(")
 if not all((bake_vertex, rotate_vertex, recalculate_winding)):
     print("FAIL: could not isolate FaceBakery vertex transformation/winding methods")
     failed = True
@@ -149,7 +149,7 @@ else:
     if any(position < 0 for position in positions) or positions != sorted(positions):
         print("FAIL: FaceBakery vertex transform/interner sequence changed or is incomplete")
         failed = True
-    elif re.search(r"Vector3f\\.(?:set|add|sub|mul|div|normalize):", bake_vertex[interner_call:]):
+    elif re.search(r"Vector3f\.(?:set|add|sub|mul|div|normalize):", bake_vertex[interner_call:]):
         print("FAIL: mutable Vector3f operation appears after interning in bakeVertex")
         failed = True
     else:
