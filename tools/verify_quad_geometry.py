@@ -336,6 +336,21 @@ for dump_path in dump_paths:
         if mutators:
             print(f"FAIL: baked-position consumer method directly invokes mutable Vector3f operations: {label}: {mutators}")
             return False
+
+        # Trace the known position-transform helper at the call boundary.
+        # Matrix4f.transformPosition accepts the baked Vector3fc as input and
+        # a separate Vector3f destination. Require that destination allocation
+        # to appear in this consumer before the helper invocation.
+        transform_call = "org/joml/Matrix4f.transformPosition:(Lorg/joml/Vector3fc;Lorg/joml/Vector3f;)Lorg/joml/Vector3f;"
+        if transform_call in body:
+            call_index = body.find(transform_call)
+            allocation_index = body.rfind("new           #", 0, call_index)
+            allocation_window = body[allocation_index:call_index] if allocation_index >= 0 else ""
+            if "class org/joml/Vector3f" not in allocation_window:
+                print(f"FAIL: position transform helper lacks a visible fresh Vector3f destination allocation: {label}")
+                return False
+            print(f"PASS: position transform helper receives Vector3fc input and a separately allocated Vector3f destination: {label}")
+
         print(f"PASS: baked-position consumer method has no direct Vector3f mutator calls: {label}")
         return True
 
