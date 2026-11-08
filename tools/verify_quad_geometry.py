@@ -57,6 +57,52 @@ checks = {
             "BlockState.isCollisionShapeFullBlock",
         ],
     ),
+
+# Separate quad-only geometry calculations from state-dependent face eligibility.
+# Bounds and partial-face classification are derived from the four baked positions.
+# faceCubic additionally consults the live block state, world, and block position,
+# so its result must never be reused as if it were a property of BakedQuad alone.
+prepare_quad_shape = method_body(
+    lighter,
+    r"private void prepareQuadShape\\(",
+)
+if prepare_quad_shape is None:
+    print("FAIL: could not isolate BlockModelLighter.prepareQuadShape")
+    failed = True
+else:
+    quad_geometry_markers = (
+        "BakedQuad.position:(I)Lorg/joml/Vector3fc;",
+        "Vector3fc.x:()F",
+        "Vector3fc.y:()F",
+        "Vector3fc.z:()F",
+        "java/lang/Math.min:(FF)F",
+        "java/lang/Math.max:(FF)F",
+        "putfield      #108                // Field facePartial:Z",
+    )
+    geometry_positions = [prepare_quad_shape.find(marker) for marker in quad_geometry_markers]
+    if not all(position >= 0 for position in geometry_positions) or geometry_positions != sorted(geometry_positions):
+        print("FAIL: prepareQuadShape no longer computes face bounds/partial classification from baked quad positions in the expected order")
+        failed = True
+    else:
+        print("PASS: prepareQuadShape derives face bounds and facePartial from baked quad vertex positions")
+
+    cubic_markers = (
+        "BlockState.isCollisionShapeFullBlock:(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Z",
+        "putfield      #56                 // Field faceCubic:Z",
+    )
+    cubic_positions = [prepare_quad_shape.find(marker) for marker in cubic_markers]
+    if not all(position >= 0 for position in cubic_positions) or cubic_positions != sorted(cubic_positions):
+        print("FAIL: prepareQuadShape no longer derives faceCubic after consulting the block collision shape")
+        failed = True
+    elif not all(name in prepare_quad_shape for name in (
+        "BlockState.isCollisionShapeFullBlock:",
+        "BlockAndTintGetter",
+        "BlockPos",
+    )):
+        print("FAIL: faceCubic no longer visibly depends on live block/world/position inputs")
+        failed = True
+    else:
+        print("PASS: faceCubic remains a separate state/world/position-dependent result and is not a quad-only cache value")
     "QuadCollection retained lists": (
         collection,
         [
