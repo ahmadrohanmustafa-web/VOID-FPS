@@ -212,6 +212,9 @@ jobs:
             javap -c -p -classpath "$MC_JAR" "$class" >> "$file" 2>&1 || true
           done
 
+      - name: Verify quad geometry cache-safety assumptions
+        run: python3 tools/verify_quad_geometry.py
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
