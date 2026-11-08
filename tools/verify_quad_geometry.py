@@ -58,6 +58,51 @@ checks = {
         ],
     ),
 
+    "QuadCollection retained lists": (
+        collection,
+        [
+            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> all;",
+            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> north;",
+            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> south;",
+            "getQuads(net.minecraft.core.Direction)",
+            "getAll()",
+        ],
+    ),
+    "ModelBakery vector interner": (
+        interner,
+        [
+            "private final com.google.common.collect.Interner<org.joml.Vector3fc> vectors;",
+            "Interners.newStrongInterner",
+            "Interner.intern:(Ljava/lang/Object;)Ljava/lang/Object;",
+            "public org.joml.Vector3fc vector(org.joml.Vector3fc);",
+        ],
+    ),
+    "FaceBakery baked-position path": (
+        face_bakery,
+        [
+            "FaceInfo$VertexInfo.select:(Lorg/joml/Vector3fc;Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
+            "ModelBaker$Interner.vector:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3fc;",
+            "aastore",
+            "BakedQuad.\"<init>\":",
+        ],
+    ),
+    "BakedQuad storage": (
+        quad,
+        [
+            "private final org.joml.Vector3fc position0;",
+            "private final org.joml.Vector3fc position1;",
+            "private final org.joml.Vector3fc position2;",
+            "private final org.joml.Vector3fc position3;",
+            "putfield      #7",
+            "putfield      #13",
+            "putfield      #16",
+            "putfield      #19",
+        ],
+    ),
+}
+
+failed = False
+
 # Separate quad-only geometry calculations from state-dependent face eligibility.
 # Bounds and partial-face classification are derived from the four baked positions.
 # faceCubic additionally consults the live block state, world, and block position,
@@ -103,50 +148,7 @@ else:
         failed = True
     else:
         print("PASS: faceCubic remains a separate state/world/position-dependent result and is not a quad-only cache value")
-    "QuadCollection retained lists": (
-        collection,
-        [
-            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> all;",
-            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> north;",
-            "private final java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> south;",
-            "getQuads(net.minecraft.core.Direction)",
-            "getAll()",
-        ],
-    ),
-    "ModelBakery vector interner": (
-        interner,
-        [
-            "private final com.google.common.collect.Interner<org.joml.Vector3fc> vectors;",
-            "Interners.newStrongInterner",
-            "Interner.intern:(Ljava/lang/Object;)Ljava/lang/Object;",
-            "public org.joml.Vector3fc vector(org.joml.Vector3fc);",
-        ],
-    ),
-    "FaceBakery baked-position path": (
-        face_bakery,
-        [
-            "FaceInfo$VertexInfo.select:(Lorg/joml/Vector3fc;Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
-            "ModelBaker$Interner.vector:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3fc;",
-            "aastore",
-            "BakedQuad.\"<init>\":",
-        ],
-    ),
-    "BakedQuad storage": (
-        quad,
-        [
-            "private final org.joml.Vector3fc position0;",
-            "private final org.joml.Vector3fc position1;",
-            "private final org.joml.Vector3fc position2;",
-            "private final org.joml.Vector3fc position3;",
-            "putfield      #7",
-            "putfield      #13",
-            "putfield      #16",
-            "putfield      #19",
-        ],
-    ),
-}
 
-failed = False
 for label, (source, needles) in checks.items():
     absent = [needle for needle in needles if needle not in source]
     if absent:
