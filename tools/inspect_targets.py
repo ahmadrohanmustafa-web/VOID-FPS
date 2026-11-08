@@ -37,12 +37,8 @@ TARGET_SIMPLE_NAMES = [
     "SectionCopy",
     "FluidRenderer",
     "BlockStateModel",
-    "BlockModelPart",
     "ModelBaker",
     "BlockModel",
-    "SimpleBlockStateModel",
-    "WeightedBlockStateModel",
-    "Variant",
     "QuadCollection",
     "BakedQuad",
     "ChunkSectionLayer",
@@ -149,7 +145,7 @@ KEYWORDS = re.compile(
 BYTECODE_CLASSES = [
     "ModelBlockRenderer", "SectionCompiler", "BlockModelLighter", "BlockQuadOutput",
     "BlockStateModelPart", "BlockStateModel", "ModelBaker", "BlockModel",
-    "SimpleBlockStateModel", "WeightedBlockStateModel", "Variant", "QuadCollection", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
+    "SingleVariant", "WeightedVariants", "QuadCollection", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
     "Block", "BlockBehaviour", "BlockStateBase", "BlockState",
     "BlockEntityRenderDispatcher", "BlockEntityRenderer", "BlockEntity", "BlockEntityType",
     "Shapes", "VoxelShape", "BlockPos", "Vec3",
@@ -302,11 +298,23 @@ def main() -> int:
 
     written = [sig_path, summary_path]
     if args.bytecode:
+        # Keep short filenames for unique classes; disambiguate duplicate simple names.
+        basename_counts: dict[str, int] = {}
+        for entries in classes.values():
+            for internal in entries:
+                basename = internal.rsplit("/", 1)[-1]
+                basename_counts[basename] = basename_counts.get(basename, 0) + 1
         for simple in BYTECODE_CLASSES:
             for internal in classes.get(simple, []):
                 if re.search(r"\$\d+$", internal):
                     continue
-                path = args.out / f"{internal.rsplit('/', 1)[-1]}.bytecode.txt"
+                basename = internal.rsplit("/", 1)[-1]
+                filename = (
+                    f"{internal.replace('/', '_')}.bytecode.txt"
+                    if basename_counts.get(basename, 0) > 1
+                    else f"{basename}.bytecode.txt"
+                )
+                path = args.out / filename
                 path.write_text(run_javap(args.javap, jar, internal, bytecode=True), encoding="utf-8")
                 written.append(path)
 
