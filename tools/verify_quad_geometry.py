@@ -15,10 +15,13 @@ face_bakery_path = inspection_root / "FaceBakery.bytecode.txt"
 vertex_output_path = inspection_root / "vertex-output.bytecode.txt"
 joml_matrix_path = inspection_root / "joml-matrix4f.bytecode.txt"
 pose_stack_pose_path = inspection_root / "pose-stack-pose.bytecode.txt"
+cache_path = inspection_root / "BlockModelLighter$Cache.bytecode.txt"
+section_compiler_path = vanilla_root / "SectionCompiler.bytecode.txt"
+baked_quad_path = vanilla_root / "BakedQuad.bytecode.txt"
 model_bakery_path = inspection_root / "ModelBakery.bytecode.txt"
 model_baker_impl_path = inspection_root / "ModelBakery$ModelBakerImpl.bytecode.txt"
 
-required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path, joml_matrix_path, pose_stack_pose_path, model_bakery_path, model_baker_impl_path)
+required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path, joml_matrix_path, pose_stack_pose_path, cache_path, section_compiler_path, baked_quad_path, model_bakery_path, model_baker_impl_path)
 missing_files = [str(path) for path in required_paths if not path.is_file()]
 if missing_files:
     sys.exit("Missing required vanilla bytecode dump(s): " + ", ".join(missing_files))
@@ -32,6 +35,9 @@ face_bakery = face_bakery_path.read_text(errors="replace")
 vertex_output = vertex_output_path.read_text(errors="replace")
 model_bakery = model_bakery_path.read_text(errors="replace")
 model_baker_impl = model_baker_impl_path.read_text(errors="replace")
+cache = cache_path.read_text(errors="replace")
+section_compiler = section_compiler_path.read_text(errors="replace")
+baked_quad = baked_quad_path.read_text(errors="replace")
 
 
 def method_body(source: str, signature_pattern: str) -> str | None:
@@ -43,6 +49,76 @@ def method_body(source: str, signature_pattern: str) -> str | None:
     )
     return match.group(0) if match else None
 
+
+# Audit the existing per-thread section-compile cache lifecycle before considering
+# any additional quad-geometry cache. This proves the intended scope, but also
+# catches the vanilla exceptional path that can bypass clearCache().
+cache_enable = method_body(cache, r"public void enable\(")
+cache_disable = method_body(cache, r"public void disable\(")
+lighter_enable = method_body(lighter, r"public static void enableCaching\(")
+lighter_clear = method_body(lighter, r"public static void clearCache\(")
+section_compile = method_body(
+    section_compiler,
+    r"public net\.minecraft\.client\.renderer\.chunk\.SectionCompiler\$Results compile\(",
+)
+if not all((cache_enable, cache_disable, lighter_enable, lighter_clear, section_compile)):
+    print("FAIL: could not isolate vanilla per-thread cache lifecycle methods")
+    failed = True
+else:
+    cache_field = "private static final java.lang.ThreadLocal<net.minecraft.client.renderer.block.BlockModelLighter$Cache> CACHE;"
+    thread_local_markers = (
+        cache_field,
+        "ThreadLocal.withInitial",
+        "BlockModelLighter$Cache.enable:",
+        "BlockModelLighter$Cache.disable:",
+    )
+    if not all(marker in lighter for marker in thread_local_markers):
+        print("FAIL: BlockModelLighter cache is no longer visibly thread-local and controlled through enable/disable")
+        failed = True
+    elif not all(marker in cache_disable for marker in (
+        "colorCache",
+        "Long2IntLinkedOpenHashMap.clear:",
+        "brightnessCache",
+        "Long2FloatLinkedOpenHashMap.clear:",
+    )):
+        print("FAIL: BlockModelLighter.Cache.disable no longer clears both existing bounded caches")
+        failed = True
+    else:
+        print("PASS: vanilla lighting cache is thread-local and disable clears its retained entries")
+
+    enable_index = section_compile.find("BlockModelLighter.enableCaching:")
+    clear_index = section_compile.find("BlockModelLighter.clearCache:")
+    exception_index = section_compile.find("Exception table:")
+    handler_index = section_compile.find("ReportedException.<init>")
+    rethrow_index = section_compile.find("athrow", handler_index)
+    if min(enable_index, clear_index, exception_index, handler_index, rethrow_index) < 0 or not (
+        enable_index < exception_index < handler_index < rethrow_index < clear_index
+    ):
+        print("FAIL: SectionCompiler cache enable/normal-clear/exception-handler order changed; review lifecycle")
+        failed = True
+    else:
+        print("PASS: SectionCompiler enables the thread-local cache and clears it on normal completion")
+        print("NOTE: the inspected block-tessellation exception path rethrows before clearCache; any added cache must remain safe if a compile aborts")
+
+    quad_header = baked_quad.split("\n", 1)[0]
+    quad_fields = [
+        line.strip()
+        for line in baked_quad.splitlines()
+        if "Vector3fc position" in line and "private final" in line
+    ]
+    if "public final class net.minecraft.client.resources.model.geometry.BakedQuad extends java.lang.Record" not in quad_header or len(quad_fields) != 4:
+        print("FAIL: BakedQuad is no longer a final record with four final position-reference fields")
+        failed = True
+    elif not all(marker in baked_quad for marker in (
+        "getfield      #7                  // Field position0:Lorg/joml/Vector3fc;",
+        "getfield      #13                 // Field position1:Lorg/joml/Vector3fc;",
+        "getfield      #16                 // Field position2:Lorg/joml/Vector3fc;",
+        "getfield      #19                 // Field position3:Lorg/joml/Vector3fc;",
+    )):
+        print("FAIL: BakedQuad.position accessors no longer return the stored position references")
+        failed = True
+    else:
+        print("PASS: BakedQuad has stable final identity/position fields, but its referenced Vector3fc objects are not defensively copied")
 
 checks = {
     "BlockModelLighter.prepareQuadShape": (
