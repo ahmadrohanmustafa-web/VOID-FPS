@@ -173,12 +173,29 @@ final class ResourcePackOverrideTest {
                                                                                          if (uvFailure == null) {
                                                                                              try {
                                                                                                  verifyRotatedUvOverride(minecraft);
-                                                                                             } catch (RuntimeException | Error verificationFailure) {
+                                                                                                 writeRotatedElementOverride(packDirectory);
+                                                                                             } catch (IOException | RuntimeException | Error verificationFailure) {
                                                                                                  uvFailure = verificationFailure;
                                                                                              }
                                                                                          }
-                                                                                         restore(minecraft, repository, originalSelectedIds, packDirectory,
-                                                                                                 uvFailure, onSuccess);
+                                                                                         if (uvFailure != null) {
+                                                                                             restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                                     uvFailure, onSuccess);
+                                                                                             return;
+                                                                                         }
+                                                                                         minecraft.reloadResourcePacks().whenComplete((elementIgnored, elementReloadFailure) ->
+                                                                                                 minecraft.execute(() -> {
+                                                                                                     Throwable elementFailure = elementReloadFailure;
+                                                                                                     if (elementFailure == null) {
+                                                                                                         try {
+                                                                                                             verifyRotatedElementOverride(minecraft);
+                                                                                                         } catch (RuntimeException | Error verificationFailure) {
+                                                                                                             elementFailure = verificationFailure;
+                                                                                                         }
+                                                                                                     }
+                                                                                                     restore(minecraft, repository, originalSelectedIds, packDirectory,
+                                                                                                             elementFailure, onSuccess);
+                                                                                                 }));
                                                                                      }));
                                                                          }));
                                                                         }));
@@ -686,6 +703,65 @@ final class ResourcePackOverrideTest {
             }
         }
         throw new IllegalStateException("Expected directional quad missing for " + direction);
+    }
+
+    private static void writeRotatedElementOverride(Path packDirectory) throws IOException {
+        String model = """
+                {
+                  "textures": {
+                    "all": "minecraft:block/dirt"
+                  },
+                  "elements": [
+                    {
+                      "from": [0, 0, 0],
+                      "to": [16, 16, 16],
+                      "rotation": {
+                        "origin": [8, 8, 8],
+                        "axis": "y",
+                        "angle": 22.5,
+                        "rescale": false
+                      },
+                      "faces": {
+                        "down": {"texture": "#all", "cullface": "down"},
+                        "up": {"texture": "#all", "cullface": "up"},
+                        "north": {"texture": "#all", "cullface": "north"},
+                        "south": {"texture": "#all", "cullface": "south"},
+                        "west": {"texture": "#all", "cullface": "west"},
+                        "east": {"texture": "#all", "cullface": "east"}
+                      }
+                    }
+                  ]
+                }
+                """;
+        Files.writeString(
+                packDirectory.resolve("assets/minecraft/models/block/stone.json"), model);
+        System.out.println("VOID FPS rewrote active folder-pack stone model with a 22.5-degree Y element rotation");
+    }
+
+    private static void verifyRotatedElementOverride(Minecraft minecraft) {
+        var state = Blocks.STONE.defaultBlockState();
+        var model = minecraft.getModelManager().getBlockStateModelSet().get(state);
+        if (model == null) {
+            throw new IllegalStateException("Stone model missing after rotated-element resource-pack reload");
+        }
+        NativeModelSnapshot.Snapshot rotated = NativeModelSnapshot.collect(
+                model, RandomSource.create(MODEL_SEED));
+        if (rotated.isEmpty()) {
+            throw new IllegalStateException("Rotated-element resource-pack override produced an empty snapshot");
+        }
+        if (rotated.hasExactlyOneUnitBoundaryQuadPerFace()) {
+            throw new IllegalStateException("22.5-degree rotated element incorrectly passed exact full-cube boundary geometry gate");
+        }
+        if (!rotated.hasOnlyPlainSolidUntintedMaterials()) {
+            throw new IllegalStateException("Rotated-element fixture unexpectedly changed plain material metadata");
+        }
+        var eligibility = SurfaceEligibility.analyzeNativeModel(state, rotated);
+        if (eligibility.supported()
+                || !"native model is not exactly one unit boundary quad per face".equals(eligibility.rejectReason())) {
+            throw new IllegalStateException(
+                    "Rotated-element resource-pack model was not rejected by native geometry gate: " + eligibility);
+        }
+        System.out.println("VOID FPS real rotated-element resource-pack override passed: live 22.5-degree geometry failed exact boundary checks and required vanilla fallback");
     }
 
     private static void restore(
