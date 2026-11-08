@@ -51,6 +51,7 @@ jobs:
           grep -q "VOID FPS real duplicate-boundary resource-pack override passed: live reload exposed 12 boundary quads and native eligibility required vanilla fallback" build/void-fps-client-smoke.log
           grep -q "VOID FPS real tinted-material resource-pack override passed: six-face geometry remained valid but tint metadata required vanilla fallback" build/void-fps-client-smoke.log
           grep -q "VOID FPS real rotated-UV resource-pack override passed: UP-face packed UVs changed, six-face geometry and plain material eligibility remained valid" build/void-fps-client-smoke.log
+          grep -q "VOID FPS real rotated-element resource-pack override passed: live 22.5-degree geometry failed exact boundary checks and required vanilla fallback" build/void-fps-client-smoke.log
           grep -q "VOID FPS original resource-pack selection restored and temporary folder removed" build/void-fps-client-smoke.log
           grep -q "VOID FPS native eligibility matrix passed: accepted=10, tintedFallback=grass_block" build/void-fps-client-smoke.log
           grep -q "VOID FPS native fallback matrix passed: modelChecks=5, rejected=6, vanillaFallbackRequired=true" build/void-fps-client-smoke.log
