@@ -89,33 +89,36 @@ else:
     enable_index = section_compile.find("BlockModelLighter.enableCaching:")
     clear_index = section_compile.find("BlockModelLighter.clearCache:")
     exception_index = section_compile.find("Exception table:")
-    handler_index = section_compile.find("ReportedException.<init>")
+    handler_index = section_compile.find("ReportedException")
     rethrow_index = section_compile.find("athrow", handler_index)
+    exception_table = section_compile[exception_index:] if exception_index >= 0 else ""
     if min(enable_index, clear_index, exception_index, handler_index, rethrow_index) < 0 or not (
-        enable_index < exception_index < handler_index < rethrow_index < clear_index
-    ):
+        enable_index < handler_index < rethrow_index < clear_index < exception_index
+    ) or "Class java/lang/Throwable" not in exception_table:
         print("FAIL: SectionCompiler cache enable/normal-clear/exception-handler order changed; review lifecycle")
         failed = True
     else:
         print("PASS: SectionCompiler enables the thread-local cache and clears it on normal completion")
         print("NOTE: the inspected block-tessellation exception path rethrows before clearCache; any added cache must remain safe if a compile aborts")
 
-    quad_header = baked_quad.split("\n", 1)[0]
+    quad_header = baked_quad.splitlines()[0] if baked_quad.splitlines() else ""
     quad_fields = [
         line.strip()
         for line in baked_quad.splitlines()
         if "Vector3fc position" in line and "private final" in line
     ]
+    position_accessors = [
+        method_body(baked_quad, rf"public org\.joml\.Vector3fc position{i}\(\)")
+        for i in range(4)
+    ]
     if "public final class net.minecraft.client.resources.model.geometry.BakedQuad extends java.lang.Record" not in quad_header or len(quad_fields) != 4:
         print("FAIL: BakedQuad is no longer a final record with four final position-reference fields")
         failed = True
-    elif not all(marker in baked_quad for marker in (
-        "getfield      #7                  // Field position0:Lorg/joml/Vector3fc;",
-        "getfield      #13                 // Field position1:Lorg/joml/Vector3fc;",
-        "getfield      #16                 // Field position2:Lorg/joml/Vector3fc;",
-        "getfield      #19                 // Field position3:Lorg/joml/Vector3fc;",
-    )):
-        print("FAIL: BakedQuad.position accessors no longer return the stored position references")
+    elif not all(position_accessors) or not all(
+        f"Field position{i}:Lorg/joml/Vector3fc;" in accessor and "areturn" in accessor
+        for i, accessor in enumerate(position_accessors)
+    ):
+        print("FAIL: BakedQuad position accessors no longer return their corresponding stored position references")
         failed = True
     else:
         print("PASS: BakedQuad has stable final identity/position fields, but its referenced Vector3fc objects are not defensively copied")
