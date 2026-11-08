@@ -12,8 +12,9 @@ collection_path = inspection_root / "QuadCollection.bytecode.txt"
 builder_path = inspection_root / "QuadCollection$Builder.bytecode.txt"
 interner_path = inspection_root / "ModelBakery$InternerImpl.bytecode.txt"
 face_bakery_path = inspection_root / "FaceBakery.bytecode.txt"
+vertex_output_path = inspection_root / "vertex-output.bytecode.txt"
 
-required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path)
+required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path)
 missing_files = [str(path) for path in required_paths if not path.is_file()]
 if missing_files:
     sys.exit("Missing required vanilla bytecode dump(s): " + ", ".join(missing_files))
@@ -24,6 +25,7 @@ collection = collection_path.read_text(errors="replace")
 builder = builder_path.read_text(errors="replace")
 interner = interner_path.read_text(errors="replace")
 face_bakery = face_bakery_path.read_text(errors="replace")
+vertex_output = vertex_output_path.read_text(errors="replace")
 
 
 def method_body(source: str, signature_pattern: str) -> str | None:
@@ -173,6 +175,22 @@ else:
     else:
         print("PASS: recalculateWinding operates on Vector3fc references and packed UV data, not Vector3f mutators")
 
+# Audit the inspected vanilla consumers of BakedQuad.position().
+# They must read Vector3fc coordinates or transform into a separate destination,
+# not mutate the interned position object itself.
+consumer_sources = {"BlockModelLighter": lighter, "VertexConsumer output paths": vertex_output}
+for label, source in consumer_sources.items():
+    if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" not in source:
+        print(f"FAIL: {label} no longer contains the expected baked-position read path")
+        failed = True
+        continue
+    mutators = re.findall(r"org/joml/Vector3f\\.(?:set|add|sub|mul|div|normalize):", source)
+    if mutators:
+        print(f"FAIL: {label} contains direct Vector3f mutator calls near baked-quad handling: {mutators}")
+        failed = True
+    else:
+        print(f"PASS: {label} reads baked positions without direct Vector3f mutator calls")
+
 if failed:
     sys.exit(
         "Quad geometry inspection changed or is incomplete; "
@@ -182,5 +200,5 @@ if failed:
 print(
     "VOID FPS quad-geometry inspection passed: FaceBakery transforms each fresh mutable Vector3f before interning it, "
     "then stores the returned Vector3fc reference. This only verifies the inspected baking path; it does not prove "
-    "global immutability or rule out mutation through other code. faceCubic also remains state-dependent."
+    "global immutability or rule out mutation through code outside the inspected vanilla consumers. The inspected BlockModelLighter and VertexConsumer paths read positions without direct Vector3f mutators; faceCubic also remains state-dependent."
 )
