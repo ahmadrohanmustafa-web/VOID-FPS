@@ -2,50 +2,45 @@
 
 Client-side Fabric project for investigating CPU-side block and terrain rendering work in Minecraft Java Edition **26.3**.
 
-> **Current verdict: no additional optimization is enabled.** Minecraft 26.3 already performs face-occlusion caching. VOID FPS does not add a duplicate cache or replace vanilla rendering. No candidate has met the evidence and benchmark requirements below.
+> **Current verdict: no additional optimization is enabled.** Minecraft 26.3 already caches face occlusion, packed light, and shade brightness during section compilation. VOID FPS does not add duplicate caches or replace vanilla rendering.
 
 ## Verified project status
 
-- GitHub Actions builds the project with Java 25 and Gradle 9.6.0.
-- The build produces a client JAR and a source JAR.
-- The client entrypoint only logs a status message. It does not modify rendering.
-- The inspection artifact includes signatures and bytecode for `Block`, `ModelBlockRenderer`, and `SectionCompiler`.
-- Vanilla `Block.shouldRenderFace` uses a thread-local, 256-entry LRU-style cache keyed by pairs of face-occlusion shapes. `ModelBlockRenderer.shouldRenderFace` delegates to this method.
-- The real Minecraft 26.3 client smoke test loads a test world, exercises native vertex-output parity fixtures, and disconnects through the normal save lifecycle.
-- A real temporary folder resource pack is activated through Minecraft's `PackRepository` and resource reload path. The test snapshots the loaded block model, then restores the original selected packs and removes its temporary pack.
-- The live resource-pack compatibility tests confirm:
-  - A normal six-face full-cube override remains eligible.
-  - Partial-height and enclosed/internal geometry require vanilla fallback.
-  - Unculled and duplicate-boundary quads require vanilla fallback.
-  - Tint-index material requires vanilla fallback.
-  - Rotating UV coordinates alone remains eligible.
-  - A 22.5-degree element geometry rotation fails exact cube-boundary validation and requires vanilla fallback.
-- Builds #318 and #319 passed. #318 contains the runtime rotated-element marker; #319 adds and passes the mandatory CI assertion for that marker.
-- The inspection confirms the real rendering flow: `SectionCompiler.compile` calls `ModelBlockRenderer.tesselateBlock`; that method selects ambient-occlusion or flat tessellation, which checks directional faces and forwards accepted baked quads to `BlockQuadOutput`. `SectionCompiler` then routes those quads to native `BufferBuilder.putBlockBakedQuad`.
-- No production mixin target has been activated. The mixin configuration remains empty.
+- GitHub Actions builds with Java 25 and Gradle 9.6.0.
+- The client entrypoint only logs a status message; it does not modify rendering.
+- Real Minecraft 26.3 client tests exercise native vertex-output fixtures, load a test world, and complete the normal save/disconnect lifecycle.
+- Real temporary folder resource packs are selected through `PackRepository` and activated by Minecraft's resource reload path. Tests verify full-cube eligibility and conservative fallback for partial, internal, unculled, duplicate, tinted, and rotated geometry. UV-only rotation remains eligible. The original pack selection is restored and the temporary pack is removed.
+- Builds #318 and #319 passed the rotated-element geometry test and its mandatory CI assertion.
+- The verified render path is `SectionCompiler.compile` → `ModelBlockRenderer.tesselateBlock` → directional face checks / `BlockQuadOutput` → native `BufferBuilder.putBlockBakedQuad`.
+
+## Important vanilla optimizations already present
+
+Minecraft 26.3 bytecode confirms multiple caches in the exact path VOID FPS was considering:
+
+1. **Face occlusion:** `Block.shouldRenderFace` uses a thread-local 256-entry access-ordered cache keyed by pairs of face-occlusion shapes. It performs the expensive shape join only on a cache miss.
+2. **Packed light and shade brightness:** `BlockModelLighter.Cache` uses thread-local linked maps with 100-entry limits for packed-light and shade-brightness results.
+3. **Section lifecycle:** `SectionCompiler.compile` enables the lighting cache before compiling a section and clears it at the end of the normal compile path.
+
+A CI bytecode verifier now checks these details. If Minecraft changes these internals, the check fails and requires a fresh review rather than silently relying on an outdated assumption.
+
+Adding a second cache for these same calculations is not a justified optimization. It can duplicate lookups, memory, and invalidation complexity.
 
 ## Scope
 
 Only block and terrain rendering. Out of scope: entities, particles, HUD/overlays, keybinds, automatic setting changes, chunk scheduling, startup/GUI optimization, gameplay, and anything that lowers visual quality.
 
-## Why no optimization was added
+## What remains before production integration
 
-The obvious proposal—caching repeated block-face visibility checks—is already implemented by Minecraft 26.3. Reimplementing it in VOID FPS would add another lookup/cache and could make performance or memory use worse.
+1. Identify a genuinely redundant operation in the verified section-compilation path that vanilla does not already cache.
+2. Prove a candidate preserves ordered native vertex output, UVs, tint, lighting, and ambient occlusion through actual section compilation.
+3. Compare screenshots/world geometry and run repeatable before/after benchmarks on the same world, hardware, and settings.
+4. Only then consider a narrowly scoped production mixin with a verified injection point.
 
-The resource-pack tests establish a conservative eligibility boundary, not a performance gain. The next engineering requirement is to identify a genuinely redundant operation in the verified section-compilation path, then prove that a narrowly scoped candidate preserves ordered native vertex output and visual behavior before considering any production integration.
-
-## What is still untested
-
-1. A production mixin at a verified target, with exact injection-point and lifecycle validation.
-2. A complete vanilla-versus-candidate ordered vertex comparison through the actual section compilation path (current candidate parity tests are isolated fixtures, not an active renderer replacement).
-3. Screenshot/world-geometry equivalence with and without any future renderer integration.
-4. Repeatable before/after performance measurements on the same world, hardware, and settings.
-
-A successful CI build is not proof of an FPS gain. Do not install this build expecting better FPS; it currently makes no rendering changes.
+The current candidate parity checks are isolated fixtures, not an active renderer replacement. No production mixin is enabled and no FPS gain is claimed. Do not install this build expecting better FPS; it currently makes no rendering changes.
 
 ## Build
 
-The GitHub Actions workflow builds with Java 25 and Gradle 9.6.0. Download the `void-fps-build` artifact from the latest successful run in the Actions tab. It contains the JAR, sources JAR, and inspection output.
+GitHub Actions uses Java 25 and Gradle 9.6.0. Download the `void-fps-build` artifact from the latest successful Actions run.
 
 ## License
 
