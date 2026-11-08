@@ -63,7 +63,7 @@ checks = {
             "FaceInfo$VertexInfo.select:(Lorg/joml/Vector3fc;Lorg/joml/Vector3fc;)Lorg/joml/Vector3f;",
             "ModelBaker$Interner.vector:(Lorg/joml/Vector3fc;)Lorg/joml/Vector3fc;",
             "aastore",
-            "BakedQuad.\\"<init>\\":",
+            "BakedQuad.\"<init>\":",
         ],
     ),
     "BakedQuad storage": (
