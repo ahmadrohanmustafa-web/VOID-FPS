@@ -197,9 +197,9 @@ if not all((quad_bake, calculate_facing, find_closest_direction, find_vertex, po
     failed = True
 else:
     post_bake_markers = [
-        "FaceBakery.bakeVertex:",
-        "FaceBakery.calculateFacing:",
-        "FaceBakery.recalculateWinding:",
+        "Method bakeVertex:",
+        "Method calculateFacing:",
+        "Method recalculateWinding:",
         'BakedQuad."<init>":',
     ]
     post_bake_positions = [quad_bake.find(marker) for marker in post_bake_markers]
