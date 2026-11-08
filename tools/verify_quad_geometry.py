@@ -13,10 +13,12 @@ builder_path = inspection_root / "QuadCollection$Builder.bytecode.txt"
 interner_path = inspection_root / "ModelBakery$InternerImpl.bytecode.txt"
 face_bakery_path = inspection_root / "FaceBakery.bytecode.txt"
 vertex_output_path = inspection_root / "vertex-output.bytecode.txt"
+joml_matrix_path = inspection_root / "joml-matrix4f.bytecode.txt"
+pose_stack_pose_path = inspection_root / "pose-stack-pose.bytecode.txt"
 model_bakery_path = inspection_root / "ModelBakery.bytecode.txt"
 model_baker_impl_path = inspection_root / "ModelBakery$ModelBakerImpl.bytecode.txt"
 
-required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path, model_bakery_path, model_baker_impl_path)
+required_paths = (lighter_path, quad_path, collection_path, builder_path, interner_path, face_bakery_path, vertex_output_path, joml_matrix_path, pose_stack_pose_path, model_bakery_path, model_baker_impl_path)
 missing_files = [str(path) for path in required_paths if not path.is_file()]
 if missing_files:
     sys.exit("Missing required vanilla bytecode dump(s): " + ", ".join(missing_files))
@@ -395,6 +397,68 @@ if unexpected_consumers:
         "their call-site methods were included in the mutation scan: "
         f"{sorted(map(str, unexpected_consumers))}"
     )
+
+
+# Inspect the actual helper implementations used by Minecraft 26.3. The
+# read-only Vector3fc source must be copied into scalar locals before the
+# mutable Vector3f destination is written or normalized.
+joml_matrix = joml_matrix_path.read_text(errors="replace")
+pose_stack_pose = pose_stack_pose_path.read_text(errors="replace")
+transform_position_fc = method_body(
+    joml_matrix,
+    r"public org\\.joml\\.Vector3f transformPosition\\(org\\.joml\\.Vector3fc, org\\.joml\\.Vector3f\\);",
+)
+transform_position_scalars = method_body(
+    joml_matrix,
+    r"public org\\.joml\\.Vector3f transformPosition\\(float, float, float, org\\.joml\\.Vector3f\\);",
+)
+transform_normal_fc = method_body(
+    pose_stack_pose,
+    r"public org\\.joml\\.Vector3f transformNormal\\(org\\.joml\\.Vector3fc, org\\.joml\\.Vector3f\\);",
+)
+transform_normal_scalars = method_body(
+    pose_stack_pose,
+    r"public org\\.joml\\.Vector3f transformNormal\\(float, float, float, org\\.joml\\.Vector3f\\);",
+)
+if not all((transform_position_fc, transform_position_scalars, transform_normal_fc, transform_normal_scalars)):
+    print("FAIL: could not isolate JOML position and PoseStack normal helper implementations")
+    failed = True
+else:
+    position_source_reads = (
+        "Vector3fc.x:()F",
+        "Vector3fc.y:()F",
+        "Vector3fc.z:()F",
+        "transformPosition:(FFFLorg/joml/Vector3f;)Lorg/joml/Vector3f;",
+    )
+    position_destination_writes = (
+        "Vector3f.set:(FFF)Lorg/joml/Vector3f;",
+        "Vector3f.mulPosition:(Lorg/joml/Matrix4fc;)Lorg/joml/Vector3f;",
+    )
+    normal_source_reads = (
+        "Vector3fc.x:()F",
+        "Vector3fc.y:()F",
+        "Vector3fc.z:()F",
+        "transformNormal:(FFFLorg/joml/Vector3f;)Lorg/joml/Vector3f;",
+    )
+    normal_destination_writes = (
+        "Matrix3f.transform:(FFFLorg/joml/Vector3f;)Lorg/joml/Vector3f;",
+        "Vector3f.normalize:()Lorg/joml/Vector3f;",
+    )
+    if not all(x in transform_position_fc for x in position_source_reads):
+        print("FAIL: Matrix4f.transformPosition(Vector3fc, Vector3f) no longer reads all source components before scalar delegation")
+        failed = True
+    elif not all(x in transform_position_scalars for x in position_destination_writes):
+        print("FAIL: Matrix4f scalar transformPosition no longer writes/transforms the supplied destination")
+        failed = True
+    elif not all(x in transform_normal_fc for x in normal_source_reads):
+        print("FAIL: PoseStack.Pose.transformNormal(Vector3fc, Vector3f) no longer reads all source components before scalar delegation")
+        failed = True
+    elif not all(x in transform_normal_scalars for x in normal_destination_writes):
+        print("FAIL: PoseStack.Pose scalar transformNormal no longer transforms and normalizes the supplied destination")
+        failed = True
+    else:
+        print("PASS: JOML transformPosition reads Vector3fc source components and mutates only the separate Vector3f destination")
+        print("PASS: PoseStack transformNormal reads Vector3fc source components and transforms/normalizes the separate Vector3f destination")
 
 if failed:
     sys.exit(
