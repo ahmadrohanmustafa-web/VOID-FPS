@@ -194,24 +194,27 @@ for label, source in consumer_sources.items():
 # Inventory every bytecode dump produced by this inspection run, not only the
 # hand-picked consumer files above. A newly discovered position() caller must
 # be reviewed before the consumer audit can be considered complete.
-known_position_consumers = {"BlockModelLighter.bytecode.txt", "vertex-output.bytecode.txt"}
+known_position_consumers = {
+    Path("BlockModelLighter.bytecode.txt"),
+    Path("vertex-output.bytecode.txt"),
+}
 discovered_position_consumers = set()
 for dump_path in inspection_root.rglob("*.bytecode.txt"):
     if dump_path == lighter_path or dump_path == quad_path:
         continue
     dump_text = dump_path.read_text(errors="replace")
     if "BakedQuad.position:(I)Lorg/joml/Vector3fc;" in dump_text:
-        discovered_position_consumers.add(dump_path.name)
+        discovered_position_consumers.add(dump_path.relative_to(inspection_root))
 unexpected_consumers = discovered_position_consumers - known_position_consumers
 missing_consumers = known_position_consumers - discovered_position_consumers
 if unexpected_consumers:
-    print(f"FAIL: new baked-position consumer(s) require manual review: {sorted(unexpected_consumers)}")
+    print(f"FAIL: new baked-position consumer(s) require manual review: {sorted(map(str, unexpected_consumers))}")
     failed = True
 elif missing_consumers:
-    print(f"FAIL: expected baked-position consumer dump(s) not found: {sorted(missing_consumers)}")
+    print(f"FAIL: expected baked-position consumer dump(s) not found: {sorted(map(str, missing_consumers))}")
     failed = True
 else:
-    print(f"PASS: complete inspection dump inventory found the two reviewed baked-position consumers: {sorted(discovered_position_consumers)}")
+    print(f"PASS: complete inspection dump inventory found the two reviewed baked-position consumers: {sorted(map(str, discovered_position_consumers))}")
 
 if failed:
     sys.exit(
