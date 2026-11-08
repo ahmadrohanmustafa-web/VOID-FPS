@@ -96,3 +96,14 @@ The inspected `BakedQuad` record stores four `Vector3fc` references directly and
 **Current conclusion:** the four-vertex bounds loop is a plausible repeated cost, but no safe speedup has been demonstrated. We have not established that the same quad instance is prepared repeatedly enough to amortize a cache, that its coordinates are immutable, or that a cache would outperform four direct reads and six min/max reductions. Do not add a production cache or skip native preparation on this evidence alone.
 
 The CI verifier `tools/verify_quad_geometry.py` checks these bytecode assumptions against the Minecraft 26.3 artifact. It is a drift detector, not a performance test or proof of rendering equivalence. Production rendering remains disabled.
+
+
+## Baked quad collection lifetime: list stability is not vertex immutability
+
+Build #329's Minecraft 26.3 bytecode artifact adds a useful distinction:
+
+- `QuadCollection.Builder` stores unculled quads in a Guava `ImmutableList.Builder` and builds immutable lists. Its culled-face data is gathered in an `ArrayListMultimap`, then copied into an immutable combined list; directional lists are sublists of that immutable list.
+- `QuadCollection` retains the resulting `List<BakedQuad>` references in final fields and returns those lists from `getQuads(direction)` and `getAll()`. This supports collection/list stability after build.
+- The list contains `BakedQuad` objects, but each `BakedQuad` stores four `Vector3fc` references directly. A final record field and an immutable list do not make the referenced vector objects immutable.
+
+**Updated conclusion:** Minecraft's built quad-list structure is immutable, but the vertex-coordinate lifetime is still unproven. We have not yet traced every vanilla and extension model-baking path to prove that all position vectors are immutable and never mutated after insertion. The existing verifier now checks the `QuadCollection` and builder bytecode markers as well as the prior geometry assumptions. This strengthens the evidence without authorizing a cache: no production geometry cache or renderer activation is justified yet.
