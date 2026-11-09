@@ -461,9 +461,9 @@ final class NativeVanillaCaptureTest {
         SectionBufferBuilderPack buffers = new SectionBufferBuilderPack();
         try {
             SectionPos sectionPos = SectionPos.of(fixturePos);
-            Map<ChunkSectionLayer, byte[]> first = captureVanillaSectionMeshes(
+            Map<ChunkSectionLayer, MeshSnapshot> first = captureVanillaSectionMeshes(
                     compiler, sectionPos, region, buffers);
-            Map<ChunkSectionLayer, byte[]> second = captureVanillaSectionMeshes(
+            Map<ChunkSectionLayer, MeshSnapshot> second = captureVanillaSectionMeshes(
                     compiler, sectionPos, region, buffers);
             if (first.isEmpty()) {
                 throw new IllegalStateException(
@@ -475,24 +475,29 @@ final class NativeVanillaCaptureTest {
                                 + first.keySet() + ", second=" + second.keySet());
             }
             for (ChunkSectionLayer layer : first.keySet()) {
-                if (!Arrays.equals(first.get(layer), second.get(layer))) {
+                MeshSnapshot a = first.get(layer);
+                MeshSnapshot b = second.get(layer);
+                if (!a.metadata().equals(b.metadata()) || !Arrays.equals(a.bytes(), b.bytes())) {
                     throw new IllegalStateException(
-                            "Repeated vanilla section mesh bytes differ for layer " + layer
-                                    + ": firstBytes=" + first.get(layer).length
-                                    + ", secondBytes=" + second.get(layer).length);
+                            "Repeated vanilla section mesh metadata/bytes differ for layer " + layer
+                                    + ": first=" + a.metadata() + ", second=" + b.metadata()
+                                    + ", firstBytes=" + a.bytes().length
+                                    + ", secondBytes=" + b.bytes().length);
                 }
             }
-            int totalBytes = first.values().stream().mapToInt(bytes -> bytes.length).sum();
+            int totalBytes = first.values().stream().mapToInt(mesh -> mesh.bytes().length).sum();
+            int totalVertices = first.values().stream().mapToInt(mesh -> mesh.metadata().vertexCount()).sum();
             System.out.println("VOID FPS native vanilla SectionCompiler mesh capture passed: section="
                     + sectionPos + ", layers=" + first.size()
-                    + ", vertexBytes=" + totalBytes
-                    + ", repeatedMeshBytesExact=true, candidateRendererExercised=false");
+                    + ", vertices=" + totalVertices + ", vertexBytes=" + totalBytes
+                    + ", formatAndTopologyValidated=true"
+                    + ", repeatedMeshBytesAndMetadataExact=true, candidateRendererExercised=false");
         } finally {
             buffers.close();
         }
     }
 
-    private static Map<ChunkSectionLayer, byte[]> captureVanillaSectionMeshes(
+    private static Map<ChunkSectionLayer, MeshSnapshot> captureVanillaSectionMeshes(
             SectionCompiler compiler,
             SectionPos sectionPos,
             RenderSectionRegion region,
@@ -500,32 +505,55 @@ final class NativeVanillaCaptureTest {
         SectionCompiler.Results results = compiler.compile(
                 sectionPos, region, VertexSorting.DISTANCE_TO_ORIGIN, buffers);
         try {
-            Map<ChunkSectionLayer, byte[]> snapshot = new LinkedHashMap<>();
+            Map<ChunkSectionLayer, MeshSnapshot> snapshot = new LinkedHashMap<>();
             for (Map.Entry<ChunkSectionLayer, MeshData> entry : results.renderedLayers.entrySet()) {
                 MeshData mesh = entry.getValue();
                 if (mesh == null) {
                     throw new IllegalStateException(
                             "Vanilla SectionCompiler returned a null mesh for " + entry.getKey());
                 }
-                int vertexCount = mesh.drawState().vertexCount();
-                if (vertexCount <= 0) {
+                MeshData.DrawState drawState = mesh.drawState();
+                int vertexCount = drawState.vertexCount();
+                int vertexStride = drawState.format().getVertexSize();
+                if (vertexCount <= 0 || vertexStride <= 0) {
                     throw new IllegalStateException(
-                            "Vanilla SectionCompiler returned a non-positive vertex count for "
-                                    + entry.getKey() + ": " + vertexCount);
+                            "Vanilla SectionCompiler returned invalid vertex metadata for "
+                                    + entry.getKey() + ": vertices=" + vertexCount
+                                    + ", stride=" + vertexStride);
                 }
                 ByteBuffer source = mesh.vertexBuffer().duplicate();
                 byte[] bytes = new byte[source.remaining()];
                 source.get(bytes);
-                if (bytes.length == 0) {
+                long expectedBytes = (long) vertexCount * vertexStride;
+                if (bytes.length == 0 || bytes.length != expectedBytes) {
                     throw new IllegalStateException(
-                            "Vanilla SectionCompiler returned an empty vertex buffer for " + entry.getKey());
+                            "Vanilla section vertex-buffer size does not match draw metadata for "
+                                    + entry.getKey() + ": bytes=" + bytes.length
+                                    + ", vertices=" + vertexCount + ", stride=" + vertexStride
+                                    + ", expectedBytes=" + expectedBytes);
                 }
-                snapshot.put(entry.getKey(), bytes);
+                if (drawState.indexCount() < 0 || drawState.primitiveTopology() == null) {
+                    throw new IllegalStateException(
+                            "Vanilla SectionCompiler returned invalid draw topology/index metadata for "
+                                    + entry.getKey() + ": " + drawState);
+                }
+                MeshMetadata metadata = new MeshMetadata(
+                        vertexCount, vertexStride, drawState.format().toString(),
+                        drawState.indexCount(), drawState.primitiveTopology().toString());
+                snapshot.put(entry.getKey(), new MeshSnapshot(metadata, bytes));
             }
             return snapshot;
         } finally {
             results.release();
         }
+    }
+
+    private record MeshMetadata(
+            int vertexCount, int vertexStride, String format,
+            int indexCount, String primitiveTopology) {
+    }
+
+    private record MeshSnapshot(MeshMetadata metadata, byte[] bytes) {
     }
 
     private static RenderSectionRegion createSectionRegion(
