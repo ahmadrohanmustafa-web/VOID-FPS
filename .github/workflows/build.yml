@@ -82,6 +82,9 @@ jobs:
       - name: Verify existing vanilla render caches
         run: python3 tools/verify_vanilla_caches.py
 
+      - name: Verify Minecraft 26.3 section mesh APIs
+        run: python3 tools/verify_section_mesh_apis.py
+
       - name: Dump native vertex output APIs
         if: always()
         continue-on-error: true
