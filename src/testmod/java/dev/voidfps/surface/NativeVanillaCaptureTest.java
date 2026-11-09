@@ -279,7 +279,7 @@ final class NativeVanillaCaptureTest {
         List<QuadSignature> candidate = new ArrayList<>();
         for (Direction direction : Direction.values()) {
             BlockState neighbour = level.getBlockState(pos.relative(direction));
-            if (cull && !net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
+            if (!net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
                 continue;
             }
             for (NativeModelSnapshot.Part part : snapshot.parts()) {
@@ -556,7 +556,7 @@ final class NativeVanillaCaptureTest {
 
                 BlockPos neighbourPos = pos.relative(direction);
                 BlockState neighbour = level.getBlockState(neighbourPos);
-                if (!net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
+                if (cull && !net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
                     continue;
                 }
 
