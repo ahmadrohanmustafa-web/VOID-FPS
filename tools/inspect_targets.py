@@ -30,6 +30,10 @@ from pathlib import Path
 TARGET_SIMPLE_NAMES = [
     "ModelBlockRenderer",
     "SectionCompiler",
+    "SectionBufferBuilderPack",
+    "SectionPos",
+    "VisGraph",
+    "VisibilitySet",
     "BlockQuadOutput",
     "BlockStateModelPart",
     "BlockModelLighter",
@@ -103,6 +107,10 @@ TARGET_SIMPLE_NAMES = [
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
 EXACT_CLASSES = {
+    "SectionBufferBuilderPack": "net/minecraft/client/renderer/SectionBufferBuilderPack.class",
+    "SectionPos": "net/minecraft/core/SectionPos.class",
+    "VisGraph": "net/minecraft/client/renderer/chunk/VisGraph.class",
+    "VisibilitySet": "net/minecraft/client/renderer/chunk/VisibilitySet.class",
     "Block": "net/minecraft/world/level/block/Block.class",
     "BlockBehaviour": "net/minecraft/world/level/block/state/BlockBehaviour.class",
     "BakedQuad": "net/minecraft/client/resources/model/geometry/BakedQuad.class",
@@ -150,7 +158,8 @@ KEYWORDS = re.compile(
 )
 
 BYTECODE_CLASSES = [
-    "ModelBlockRenderer", "SectionCompiler", "BlockModelLighter", "BlockQuadOutput",
+    "ModelBlockRenderer", "SectionCompiler", "SectionBufferBuilderPack", "SectionPos",
+    "VisGraph", "VisibilitySet", "BlockModelLighter", "BlockQuadOutput",
     "BlockStateModelPart", "BlockStateModel", "ModelBaker", "ModelBakery",
     "FaceBakery", "BlockElement", "BlockElementFace", "Variant", "BlockModel",
     "SingleVariant", "WeightedVariants", "QuadCollection", "BlockAndTintGetter", "BlockColors", "BlockTintSource",
