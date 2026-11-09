@@ -337,8 +337,10 @@ final class NativeVanillaCaptureTest {
                 BlockState previous = level.getBlockState(neighbourPos);
                 String scenario = "neighbour-" + neighbourLabel + "-" + direction.name();
                 try {
-                    if (!level.setBlock(neighbourPos, neighbourState, 3)
-                            || !level.getBlockState(neighbourPos).equals(neighbourState)) {
+                    // setBlock returns false when the requested state is already present
+                    // (notably AIR in the initially empty test fixture). Verify the world state.
+                    level.setBlock(neighbourPos, neighbourState, 3);
+                    if (!level.getBlockState(neighbourPos).equals(neighbourState)) {
                         throw new IllegalStateException(
                                 "Could not place temporary " + neighbourLabel
                                         + " neighbour for native culling test on " + direction);
