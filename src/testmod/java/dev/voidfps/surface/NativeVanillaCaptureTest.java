@@ -69,6 +69,7 @@ final class NativeVanillaCaptureTest {
                 + ", repeatedCaptureExact=true");
 
         verifyCandidateFaceSelection(level, pos, state, model, seed, first.quads());
+        verifyRendererFlagParity(level, pos, state, model, seed);
         verifyNativeWorldFaceCulling(level, pos, state, model, seed);
         verifyAdditionalFullCubeModels(level, pos);
         verifySectionRegionVertexParity(level, pos, state, model, seed);
@@ -184,6 +185,47 @@ final class NativeVanillaCaptureTest {
     }
 
     /**
+     * Verifies the candidate against every ModelBlockRenderer constructor flag combination.
+     * The production caller may disable AO or face culling; candidate parity must respect both
+     * switches rather than assuming the test fixture's usual (true, true) configuration.
+     */
+    private static void verifyRendererFlagParity(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        for (boolean ambientOcclusion : new boolean[]{false, true}) {
+            for (boolean cull : new boolean[]{false, true}) {
+                String scenario = "renderer-flags-ao-" + ambientOcclusion + "-cull-" + cull;
+                verifyCandidateVertexOutput(
+                        level, pos, state, model, seed, scenario, ambientOcclusion, cull);
+
+                Direction covered = Direction.NORTH;
+                BlockPos neighbourPos = pos.relative(covered);
+                BlockState previous = level.getBlockState(neighbourPos);
+                try {
+                    if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
+                            || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                        throw new IllegalStateException(
+                                "Could not place renderer-flag parity neighbour on " + covered);
+                    }
+                    verifyCandidateVertexOutput(
+                            level, pos, state, model, seed, scenario + "-covered-" + covered,
+                            ambientOcclusion, cull);
+                } finally {
+                    if (!level.setBlock(neighbourPos, previous, 3)
+                            || !level.getBlockState(neighbourPos).equals(previous)) {
+                        throw new IllegalStateException(
+                                "Could not restore renderer-flag parity neighbour at " + neighbourPos);
+                    }
+                }
+            }
+        }
+        System.out.println("VOID FPS ModelBlockRenderer flag matrix passed: AO={false,true}, cull={false,true}");
+    }
+
+    /**
      * Test-only VOID candidate face selector. It independently walks the selected native
      * model's directional quads, applies Minecraft's face-visibility predicate to live
      * neighbours, and compares the ordered native quad identities/materials with the
@@ -237,7 +279,7 @@ final class NativeVanillaCaptureTest {
         List<QuadSignature> candidate = new ArrayList<>();
         for (Direction direction : Direction.values()) {
             BlockState neighbour = level.getBlockState(pos.relative(direction));
-            if (!net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
+            if (cull && !net.minecraft.world.level.block.Block.shouldRenderFace(state, neighbour, direction)) {
                 continue;
             }
             for (NativeModelSnapshot.Part part : snapshot.parts()) {
@@ -425,10 +467,22 @@ final class NativeVanillaCaptureTest {
             BlockStateModel model,
             long seed,
             String scenario) {
+        verifyCandidateVertexOutput(level, pos, state, model, seed, scenario, true, true);
+    }
+
+    private static void verifyCandidateVertexOutput(
+            BlockAndTintGetter level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed,
+            String scenario,
+            boolean ambientOcclusion,
+            boolean cull) {
         BlockModelLighter.enableCaching();
         try {
-            Capture vanilla = capture(level, pos, state, model, seed);
-            Capture candidate = captureCandidate(level, pos, state, model, seed);
+            Capture vanilla = capture(level, pos, state, model, seed, ambientOcclusion, cull);
+            Capture candidate = captureCandidate(level, pos, state, model, seed, ambientOcclusion, cull);
             NativeVertexParity.Result parity =
                     NativeVertexParity.compare(vanilla.vertices(), candidate.vertices(), 0.0f);
             if (!parity.matches()) {
@@ -459,7 +513,9 @@ final class NativeVanillaCaptureTest {
             BlockPos pos,
             BlockState state,
             BlockStateModel model,
-            long seed) {
+            long seed,
+            boolean ambientOcclusion,
+            boolean cull) {
         NativeModelSnapshot.Snapshot snapshot =
                 NativeModelSnapshot.collect(model, net.minecraft.util.RandomSource.create(seed));
         SurfaceEligibility.NativeGeometryAnalysis eligibility =
@@ -473,7 +529,7 @@ final class NativeVanillaCaptureTest {
         }
 
         boolean useAmbientOcclusion =
-                state.getLightEmission() == 0 && snapshot.parts().getFirst().ambientOcclusion();
+                ambientOcclusion && state.getLightEmission() == 0 && snapshot.parts().getFirst().ambientOcclusion();
         var offset = state.getOffset(pos);
         float x = pos.getX() + (float) offset.x;
         float y = pos.getY() + (float) offset.y;
@@ -531,7 +587,19 @@ final class NativeVanillaCaptureTest {
             BlockState state,
             BlockStateModel model,
             long seed) {
-        ModelBlockRenderer renderer = new ModelBlockRenderer(true, true, BlockColors.createDefault());
+        return capture(level, pos, state, model, seed, true, true);
+    }
+
+    private static Capture capture(
+            BlockAndTintGetter level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed,
+            boolean ambientOcclusion,
+            boolean cull) {
+        ModelBlockRenderer renderer = new ModelBlockRenderer(
+                ambientOcclusion, cull, BlockColors.createDefault());
         NativeVertexRecorder recorder = new NativeVertexRecorder();
         List<QuadSignature> quads = new ArrayList<>();
 
