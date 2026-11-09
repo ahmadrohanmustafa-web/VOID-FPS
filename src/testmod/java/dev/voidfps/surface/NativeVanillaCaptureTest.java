@@ -311,7 +311,9 @@ final class NativeVanillaCaptureTest {
 
     /**
      * Exercises Minecraft's real world-neighbour culling through ModelBlockRenderer.
-     * Each temporary adjacent stone must hide exactly the matching face of the fixture.
+     * The candidate must match vanilla for both occluding and non-occluding neighbour
+     * materials, in every direction. This prevents a stone-only test from hiding
+     * incorrect assumptions about transparent or foliage neighbours.
      */
     private static void verifyNativeWorldFaceCulling(
             ClientLevel level,
@@ -319,35 +321,56 @@ final class NativeVanillaCaptureTest {
             BlockState state,
             BlockStateModel model,
             long seed) {
-        for (Direction direction : Direction.values()) {
-            BlockPos neighbourPos = pos.relative(direction);
-            BlockState previous = level.getBlockState(neighbourPos);
-            try {
-                if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
-                        || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
-                    throw new IllegalStateException(
-                            "Could not place temporary neighbour for native culling test on " + direction);
-                }
+        BlockState[] neighbourStates = {
+                Blocks.AIR.defaultBlockState(),
+                Blocks.STONE.defaultBlockState(),
+                Blocks.GLASS.defaultBlockState(),
+                Blocks.OAK_LEAVES.defaultBlockState()
+        };
+        String[] neighbourLabels = {"air", "stone", "glass", "oak_leaves"};
 
-                Capture withNeighbour = capture(level, pos, state, model, seed);
-                boolean hiddenFaceStillPresent = withNeighbour.quads().stream()
-                        .anyMatch(quad -> quad.direction() == direction);
-                if (withNeighbour.quads().size() != 5 || hiddenFaceStillPresent) {
-                    throw new IllegalStateException(
-                            "Native world culling mismatch on " + direction
-                                    + ": quads=" + withNeighbour.quads().size()
-                                    + ", hiddenFaceStillPresent=" + hiddenFaceStillPresent);
-                }
-                System.out.println("VOID FPS real-world native face culling passed: covered="
-                        + direction + ", emittedQuads=5");
-            } finally {
-                if (!level.setBlock(neighbourPos, previous, 3)
-                        || !level.getBlockState(neighbourPos).equals(previous)) {
-                    throw new IllegalStateException(
-                            "Could not restore temporary neighbour after culling test at " + neighbourPos);
+        for (int neighbourIndex = 0; neighbourIndex < neighbourStates.length; neighbourIndex++) {
+            BlockState neighbourState = neighbourStates[neighbourIndex];
+            String neighbourLabel = neighbourLabels[neighbourIndex];
+            for (Direction direction : Direction.values()) {
+                BlockPos neighbourPos = pos.relative(direction);
+                BlockState previous = level.getBlockState(neighbourPos);
+                String scenario = "neighbour-" + neighbourLabel + "-" + direction.name();
+                try {
+                    if (!level.setBlock(neighbourPos, neighbourState, 3)
+                            || !level.getBlockState(neighbourPos).equals(neighbourState)) {
+                        throw new IllegalStateException(
+                                "Could not place temporary " + neighbourLabel
+                                        + " neighbour for native culling test on " + direction);
+                    }
+
+                    Capture vanilla = capture(level, pos, state, model, seed);
+                    List<QuadSignature> candidate =
+                            candidateVisibleQuads(level, pos, state, model, seed);
+                    assertCandidateMatchesVanilla(scenario, vanilla.quads(), candidate);
+                    verifyCandidateVertexOutput(level, pos, state, model, seed, scenario);
+
+                    if (neighbourState.is(Blocks.STONE)) {
+                        boolean hiddenFaceStillPresent = vanilla.quads().stream()
+                                .anyMatch(quad -> quad.direction() == direction);
+                        if (vanilla.quads().size() != 5 || hiddenFaceStillPresent) {
+                            throw new IllegalStateException(
+                                    "Native opaque-neighbour culling mismatch on " + direction
+                                            + ": quads=" + vanilla.quads().size()
+                                            + ", hiddenFaceStillPresent=" + hiddenFaceStillPresent);
+                        }
+                    }
+                } finally {
+                    if (!level.setBlock(neighbourPos, previous, 3)
+                            || !level.getBlockState(neighbourPos).equals(previous)) {
+                        throw new IllegalStateException(
+                                "Could not restore temporary neighbour after culling test at " + neighbourPos);
+                    }
                 }
             }
         }
+        System.out.println("VOID FPS native neighbour-material parity passed: materials=4, directions=6, "
+                + "combinations=24, exactVertexParity=true");
     }
 
     /**
