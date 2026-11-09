@@ -361,8 +361,10 @@ final class NativeVanillaCaptureTest {
                         }
                     }
                 } finally {
-                    if (!level.setBlock(neighbourPos, previous, 3)
-                            || !level.getBlockState(neighbourPos).equals(previous)) {
+                    // setBlock may return false when the requested state is already present.
+                    // Restoration is successful when the world actually contains the saved state.
+                    level.setBlock(neighbourPos, previous, 3);
+                    if (!level.getBlockState(neighbourPos).equals(previous)) {
                         throw new IllegalStateException(
                                 "Could not restore temporary neighbour after culling test at " + neighbourPos);
                     }
