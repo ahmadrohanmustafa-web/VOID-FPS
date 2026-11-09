@@ -116,6 +116,14 @@ TARGET_SIMPLE_NAMES = [
 
 # Classes that must be matched exactly by full internal path because the simple name is ambiguous.
 EXACT_CLASSES = {
+    # Render/mesh APIs live in Mojang packages, not net/minecraft.
+    "MeshData": "com/mojang/blaze3d/vertex/MeshData.class",
+    "MeshData$DrawState": "com/mojang/blaze3d/vertex/MeshData$DrawState.class",
+    "MeshData$SortState": "com/mojang/blaze3d/vertex/MeshData$SortState.class",
+    "VertexSorting": "com/mojang/blaze3d/vertex/VertexSorting.class",
+    "ByteBufferBuilder": "com/mojang/blaze3d/vertex/ByteBufferBuilder.class",
+    "VertexFormat": "com/mojang/renderpearl/api/vertex/VertexFormat.class",
+    "VertexFormatElement": "com/mojang/renderpearl/api/vertex/VertexFormatElement.class",
     "SectionBufferBuilderPack": "net/minecraft/client/renderer/SectionBufferBuilderPack.class",
     "SectionPos": "net/minecraft/core/SectionPos.class",
     "VisGraph": "net/minecraft/client/renderer/chunk/VisGraph.class",
@@ -234,18 +242,19 @@ def resolve_classes(jar: Path) -> dict[str, list[str]]:
     """Map each target simple name to the jar entries (without .class) that belong to it."""
     found: dict[str, list[str]] = {name: [] for name in TARGET_SIMPLE_NAMES}
     with zipfile.ZipFile(jar) as zf:
-        names = [n for n in zf.namelist() if n.startswith("net/minecraft/") and n.endswith(".class")]
+        all_class_names = [n for n in zf.namelist() if n.endswith(".class")]
+        minecraft_class_names = [n for n in all_class_names if n.startswith("net/minecraft/")]
     for simple in TARGET_SIMPLE_NAMES:
         if simple in EXACT_CLASSES:
             exact = EXACT_CLASSES[simple]
             base = exact[: -len(".class")]
-            matches = [n[: -len(".class")] for n in names
+            matches = [n[: -len(".class")] for n in all_class_names
                        if n == exact or n.startswith(base + "$")]
         else:
             matches = []
         if not matches:
             # Not at the expected path (or not an exact-path class): fall back to simple-name search.
-            for n in names:
+            for n in minecraft_class_names:
                 stem = n[: -len(".class")]
                 last = stem.rsplit("/", 1)[-1]
                 if last == simple or last.startswith(simple + "$"):
