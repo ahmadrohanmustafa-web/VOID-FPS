@@ -201,28 +201,29 @@ final class NativeVanillaCaptureTest {
                 verifyCandidateVertexOutput(
                         level, pos, state, model, seed, scenario, ambientOcclusion, cull);
 
-                Direction covered = Direction.NORTH;
-                BlockPos neighbourPos = pos.relative(covered);
-                BlockState previous = level.getBlockState(neighbourPos);
-                try {
-                    if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
-                            || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
-                        throw new IllegalStateException(
-                                "Could not place renderer-flag parity neighbour on " + covered);
-                    }
-                    verifyCandidateVertexOutput(
-                            level, pos, state, model, seed, scenario + "-covered-" + covered,
-                            ambientOcclusion, cull);
-                } finally {
-                    if (!level.setBlock(neighbourPos, previous, 3)
-                            || !level.getBlockState(neighbourPos).equals(previous)) {
-                        throw new IllegalStateException(
-                                "Could not restore renderer-flag parity neighbour at " + neighbourPos);
+                for (Direction covered : Direction.values()) {
+                    BlockPos neighbourPos = pos.relative(covered);
+                    BlockState previous = level.getBlockState(neighbourPos);
+                    try {
+                        if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
+                                || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                            throw new IllegalStateException(
+                                    "Could not place renderer-flag parity neighbour on " + covered);
+                        }
+                        verifyCandidateVertexOutput(
+                                level, pos, state, model, seed, scenario + "-covered-" + covered,
+                                ambientOcclusion, cull);
+                    } finally {
+                        if (!level.setBlock(neighbourPos, previous, 3)
+                                || !level.getBlockState(neighbourPos).equals(previous)) {
+                            throw new IllegalStateException(
+                                    "Could not restore renderer-flag parity neighbour at " + neighbourPos);
+                        }
                     }
                 }
             }
         }
-        System.out.println("VOID FPS ModelBlockRenderer flag matrix passed: AO={false,true}, cull={false,true}");
+        System.out.println("VOID FPS ModelBlockRenderer flag matrix passed: AO={false,true}, cull={false,true}, coveredDirections=6");
     }
 
     /**
