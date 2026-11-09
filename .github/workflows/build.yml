@@ -205,6 +205,12 @@ jobs:
             net.minecraft.world.level.dimension.DimensionType
             net.minecraft.world.level.chunk.ChunkAccess
             net.minecraft.client.renderer.chunk.SectionCompiler
+            net.minecraft.client.renderer.SectionBufferBuilderPack
+            net.minecraft.core.SectionPos
+            net.minecraft.client.renderer.chunk.VisGraph
+            net.minecraft.client.renderer.chunk.VisibilitySet
+            net.minecraft.client.renderer.block.BlockStateModelSet
+            net.minecraft.client.renderer.block.FluidStateModelSet
           )
           for class in "${classes[@]}"; do
             file="build/void-fps-inspect/vanilla-bytecode/${class##*.}.bytecode.txt"
