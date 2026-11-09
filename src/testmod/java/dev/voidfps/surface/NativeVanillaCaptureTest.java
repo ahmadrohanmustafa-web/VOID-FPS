@@ -532,6 +532,10 @@ final class NativeVanillaCaptureTest {
                     int elementOffset = element.offset();
                     int elementSize = element.format().blockSize();
                     int elementAlignment = element.format().byteAlignment();
+                    var componentType = element.format().componentType();
+                    int componentCount = element.format().componentCount();
+                    int componentBytes = componentType == null ? 0 : componentType.byteSize();
+                    long expectedComponentBytes = (long) componentBytes * componentCount;
                     long elementEnd = (long) elementOffset + elementSize;
                     if (elementName == null || elementName.isBlank() || !elementNames.add(elementName)) {
                         throw new IllegalStateException(
@@ -541,13 +545,20 @@ final class NativeVanillaCaptureTest {
                     }
                     if (elementOffset < 0 || !elementOffsets.add(elementOffset)
                             || elementSize <= 0 || elementAlignment <= 0
+                            || componentType == null || componentCount <= 0 || componentBytes <= 0
+                            || expectedComponentBytes != elementSize
                             || elementOffset % elementAlignment != 0
                             || elementEnd > vertexStride) {
                         throw new IllegalStateException(
                                 "Vanilla section mesh has an invalid vertex element layout for "
                                         + entry.getKey() + ": element=" + elementName
                                         + ", offset=" + elementOffset + ", size=" + elementSize
-                                        + ", alignment=" + elementAlignment + ", stride=" + vertexStride
+                                        + ", alignment=" + elementAlignment
+                                        + ", componentType=" + componentType
+                                        + ", componentCount=" + componentCount
+                                        + ", componentBytes=" + componentBytes
+                                        + ", expectedComponentBytes=" + expectedComponentBytes
+                                        + ", stride=" + vertexStride
                                         + ", format=" + drawState.format());
                     }
                     if (elementOffset < previousElementEnd) {
