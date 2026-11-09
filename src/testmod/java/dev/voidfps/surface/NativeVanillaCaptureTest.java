@@ -491,6 +491,9 @@ final class NativeVanillaCaptureTest {
                     + sectionPos + ", layers=" + first.size()
                     + ", vertices=" + totalVertices + ", vertexBytes=" + totalBytes
                     + ", formatAndTopologyValidated=true"
+                    + ", vertexElements=" + first.values().stream()
+                            .map(mesh -> mesh.metadata().elementDescriptors())
+                            .toList()
                     + ", repeatedMeshBytesAndMetadataExact=true, candidateRendererExercised=false");
         } finally {
             buffers.close();
@@ -522,6 +525,7 @@ final class NativeVanillaCaptureTest {
                 }
                 java.util.Set<String> elementNames = new java.util.HashSet<>();
                 java.util.Set<Integer> elementOffsets = new java.util.HashSet<>();
+                List<String> elementDescriptors = new ArrayList<>();
                 int previousElementEnd = 0;
                 for (var element : drawState.format().getElements()) {
                     String elementName = element.name();
@@ -553,6 +557,14 @@ final class NativeVanillaCaptureTest {
                                         + ", offset=" + elementOffset + ", previousEnd=" + previousElementEnd
                                         + ", format=" + drawState.format());
                     }
+                    elementDescriptors.add(elementName + "@"
+                            + elementOffset + ":" + element.format()
+                            + "[bytes=" + elementSize
+                            + ",alignment=" + elementAlignment
+                            + ",componentType=" + element.format().componentType()
+                            + ",componentCount=" + element.format().componentCount()
+                            + ",componentBytes=" + element.format().componentType().byteSize()
+                            + "]");
                     previousElementEnd = (int) elementEnd;
                 }
                 if (vertexCount <= 0 || vertexStride <= 0) {
@@ -579,6 +591,7 @@ final class NativeVanillaCaptureTest {
                 }
                 MeshMetadata metadata = new MeshMetadata(
                         vertexCount, vertexStride, drawState.format().toString(),
+                        String.join(" | ", elementDescriptors),
                         drawState.indexCount(), drawState.primitiveTopology().toString());
                 snapshot.put(entry.getKey(), new MeshSnapshot(metadata, bytes));
             }
@@ -589,7 +602,7 @@ final class NativeVanillaCaptureTest {
     }
 
     private record MeshMetadata(
-            int vertexCount, int vertexStride, String format,
+            int vertexCount, int vertexStride, String format, String elementDescriptors,
             int indexCount, String primitiveTopology) {
     }
 
