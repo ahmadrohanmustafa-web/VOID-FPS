@@ -6,6 +6,13 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.chunk.RenderSectionRegion;
 import net.minecraft.client.renderer.chunk.SectionCopy;
+import net.minecraft.client.renderer.SectionBufferBuilderPack;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.client.renderer.chunk.SectionCompiler;
+import com.mojang.blaze3d.vertex.MeshData;
+import com.mojang.blaze3d.vertex.VertexSorting;
+import net.minecraft.core.SectionPos;
+import net.minecraft.client.Minecraft;
 
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -21,6 +28,10 @@ import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -390,6 +401,7 @@ final class NativeVanillaCaptureTest {
             long seed) {
         RenderSectionRegion region = createSectionRegion(level, pos, state);
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
+        verifyNativeSectionCompilerMeshCapture(level, pos, region);
         System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
                 + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
 
@@ -428,6 +440,91 @@ final class NativeVanillaCaptureTest {
                             "Could not restore section-region neighbour at " + neighbourPos);
                 }
             }
+        }
+    }
+
+    /**
+     * Captures the actual vanilla SectionCompiler output for the fixture's 16x16x16
+     * section. This is a repeatability/baseline test only: SectionCompiler still uses
+     * Minecraft's native ModelBlockRenderer and does not exercise a VOID replacement.
+     */
+    private static void verifyNativeSectionCompilerMeshCapture(
+            ClientLevel level, BlockPos fixturePos, RenderSectionRegion region) {
+        Minecraft minecraft = Minecraft.getInstance();
+        var modelManager = minecraft.getModelManager();
+        SectionCompiler compiler = new SectionCompiler(
+                true,
+                true,
+                modelManager.getBlockStateModelSet(),
+                modelManager.getFluidStateModelSet(),
+                minecraft.getBlockColors());
+        SectionBufferBuilderPack buffers = new SectionBufferBuilderPack();
+        try {
+            SectionPos sectionPos = SectionPos.of(fixturePos);
+            Map<ChunkSectionLayer, byte[]> first = captureVanillaSectionMeshes(
+                    compiler, sectionPos, region, buffers);
+            Map<ChunkSectionLayer, byte[]> second = captureVanillaSectionMeshes(
+                    compiler, sectionPos, region, buffers);
+            if (first.isEmpty()) {
+                throw new IllegalStateException(
+                        "Vanilla SectionCompiler emitted no meshes for fixture section " + sectionPos);
+            }
+            if (!first.keySet().equals(second.keySet())) {
+                throw new IllegalStateException(
+                        "Repeated vanilla section compiles produced different render layers: first="
+                                + first.keySet() + ", second=" + second.keySet());
+            }
+            for (ChunkSectionLayer layer : first.keySet()) {
+                if (!Arrays.equals(first.get(layer), second.get(layer))) {
+                    throw new IllegalStateException(
+                            "Repeated vanilla section mesh bytes differ for layer " + layer
+                                    + ": firstBytes=" + first.get(layer).length
+                                    + ", secondBytes=" + second.get(layer).length);
+                }
+            }
+            int totalBytes = first.values().stream().mapToInt(bytes -> bytes.length).sum();
+            System.out.println("VOID FPS native vanilla SectionCompiler mesh capture passed: section="
+                    + sectionPos + ", layers=" + first.size()
+                    + ", vertexBytes=" + totalBytes
+                    + ", repeatedMeshBytesExact=true, candidateRendererExercised=false");
+        } finally {
+            buffers.close();
+        }
+    }
+
+    private static Map<ChunkSectionLayer, byte[]> captureVanillaSectionMeshes(
+            SectionCompiler compiler,
+            SectionPos sectionPos,
+            RenderSectionRegion region,
+            SectionBufferBuilderPack buffers) {
+        SectionCompiler.Results results = compiler.compile(
+                sectionPos, region, VertexSorting.DISTANCE_TO_ORIGIN, buffers);
+        try {
+            Map<ChunkSectionLayer, byte[]> snapshot = new LinkedHashMap<>();
+            for (Map.Entry<ChunkSectionLayer, MeshData> entry : results.renderedLayers.entrySet()) {
+                MeshData mesh = entry.getValue();
+                if (mesh == null) {
+                    throw new IllegalStateException(
+                            "Vanilla SectionCompiler returned a null mesh for " + entry.getKey());
+                }
+                int vertexCount = mesh.drawState().vertexCount();
+                if (vertexCount <= 0) {
+                    throw new IllegalStateException(
+                            "Vanilla SectionCompiler returned a non-positive vertex count for "
+                                    + entry.getKey() + ": " + vertexCount);
+                }
+                ByteBuffer source = mesh.vertexBuffer().duplicate();
+                byte[] bytes = new byte[source.remaining()];
+                source.get(bytes);
+                if (bytes.length == 0) {
+                    throw new IllegalStateException(
+                            "Vanilla SectionCompiler returned an empty vertex buffer for " + entry.getKey());
+                }
+                snapshot.put(entry.getKey(), bytes);
+            }
+            return snapshot;
+        } finally {
+            results.release();
         }
     }
 
