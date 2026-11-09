@@ -522,31 +522,38 @@ final class NativeVanillaCaptureTest {
                 }
                 java.util.Set<String> elementNames = new java.util.HashSet<>();
                 java.util.Set<Integer> elementOffsets = new java.util.HashSet<>();
-                int previousElementOffset = -1;
+                int previousElementEnd = 0;
                 for (var element : drawState.format().getElements()) {
                     String elementName = element.name();
                     int elementOffset = element.offset();
+                    int elementSize = element.format().blockSize();
+                    int elementAlignment = element.format().byteAlignment();
+                    long elementEnd = (long) elementOffset + elementSize;
                     if (elementName == null || elementName.isBlank() || !elementNames.add(elementName)) {
                         throw new IllegalStateException(
                                 "Vanilla section mesh has a missing or duplicate vertex element name for "
                                         + entry.getKey() + ": " + elementName
                                         + ", format=" + drawState.format());
                     }
-                    if (elementOffset < 0 || elementOffset >= vertexStride
-                            || !elementOffsets.add(elementOffset)) {
+                    if (elementOffset < 0 || !elementOffsets.add(elementOffset)
+                            || elementSize <= 0 || elementAlignment <= 0
+                            || elementOffset % elementAlignment != 0
+                            || elementEnd > vertexStride) {
                         throw new IllegalStateException(
-                                "Vanilla section mesh has an invalid or duplicate vertex element offset for "
+                                "Vanilla section mesh has an invalid vertex element layout for "
                                         + entry.getKey() + ": element=" + elementName
-                                        + ", offset=" + elementOffset + ", stride=" + vertexStride
+                                        + ", offset=" + elementOffset + ", size=" + elementSize
+                                        + ", alignment=" + elementAlignment + ", stride=" + vertexStride
                                         + ", format=" + drawState.format());
                     }
-                    if (elementOffset <= previousElementOffset) {
+                    if (elementOffset < previousElementEnd) {
                         throw new IllegalStateException(
-                                "Vanilla section mesh vertex elements are not in increasing byte-offset order for "
+                                "Vanilla section mesh vertex elements overlap or are out of byte-offset order for "
                                         + entry.getKey() + ": element=" + elementName
-                                        + ", offset=" + elementOffset + ", format=" + drawState.format());
+                                        + ", offset=" + elementOffset + ", previousEnd=" + previousElementEnd
+                                        + ", format=" + drawState.format());
                     }
-                    previousElementOffset = elementOffset;
+                    previousElementEnd = (int) elementEnd;
                 }
                 if (vertexCount <= 0 || vertexStride <= 0) {
                     throw new IllegalStateException(
