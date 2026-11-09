@@ -30,6 +30,15 @@ from pathlib import Path
 TARGET_SIMPLE_NAMES = [
     "ModelBlockRenderer",
     "SectionCompiler",
+    "SectionCompiler$Results",
+    "MeshData",
+    "MeshData$DrawState",
+    "MeshData$SortState",
+    "VertexSorting",
+    "ByteBufferBuilder",
+    "ChunkSectionLayer",
+    "VertexFormat",
+    "VertexFormatElement",
     "SectionBufferBuilderPack",
     "SectionPos",
     "VisGraph",
@@ -158,7 +167,10 @@ KEYWORDS = re.compile(
 )
 
 BYTECODE_CLASSES = [
-    "ModelBlockRenderer", "SectionCompiler", "SectionBufferBuilderPack", "SectionPos",
+    "ModelBlockRenderer", "SectionCompiler", "SectionCompiler$Results", "MeshData",
+    "MeshData$DrawState", "MeshData$SortState", "VertexSorting", "ByteBufferBuilder",
+    "ChunkSectionLayer", "VertexFormat", "VertexFormatElement",
+    "SectionBufferBuilderPack", "SectionPos",
     "VisGraph", "VisibilitySet", "BlockModelLighter", "BlockQuadOutput",
     "BlockStateModelPart", "BlockStateModel", "ModelBaker", "ModelBakery",
     "FaceBakery", "BlockElement", "BlockElementFace", "Variant", "BlockModel",
