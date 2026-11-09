@@ -205,8 +205,8 @@ final class NativeVanillaCaptureTest {
                     BlockPos neighbourPos = pos.relative(covered);
                     BlockState previous = level.getBlockState(neighbourPos);
                     try {
-                        if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
-                                || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                        level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3);
+                        if (!level.getBlockState(neighbourPos).is(Blocks.STONE)) {
                             throw new IllegalStateException(
                                     "Could not place renderer-flag parity neighbour on " + covered);
                         }
@@ -214,8 +214,8 @@ final class NativeVanillaCaptureTest {
                                 level, pos, state, model, seed, scenario + "-covered-" + covered,
                                 ambientOcclusion, cull);
                     } finally {
-                        if (!level.setBlock(neighbourPos, previous, 3)
-                                || !level.getBlockState(neighbourPos).equals(previous)) {
+                        level.setBlock(neighbourPos, previous, 3);
+                        if (!level.getBlockState(neighbourPos).equals(previous)) {
                             throw new IllegalStateException(
                                     "Could not restore renderer-flag parity neighbour at " + neighbourPos);
                         }
@@ -248,8 +248,8 @@ final class NativeVanillaCaptureTest {
             BlockPos neighbourPos = pos.relative(direction);
             BlockState previous = level.getBlockState(neighbourPos);
             try {
-                if (!level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3)
-                        || !level.getBlockState(neighbourPos).is(Blocks.STONE)) {
+                level.setBlock(neighbourPos, Blocks.STONE.defaultBlockState(), 3);
+                if (!level.getBlockState(neighbourPos).is(Blocks.STONE)) {
                     throw new IllegalStateException(
                             "Could not place candidate selector neighbour on " + direction);
                 }
@@ -260,8 +260,8 @@ final class NativeVanillaCaptureTest {
                 assertCandidateMatchesVanilla(direction.name(), vanilla.quads(), candidate);
                 verifyCandidateVertexOutput(level, pos, state, model, seed, direction.name());
             } finally {
-                if (!level.setBlock(neighbourPos, previous, 3)
-                        || !level.getBlockState(neighbourPos).equals(previous)) {
+                level.setBlock(neighbourPos, previous, 3);
+                if (!level.getBlockState(neighbourPos).equals(previous)) {
                     throw new IllegalStateException(
                             "Could not restore candidate selector neighbour at " + neighbourPos);
                 }
