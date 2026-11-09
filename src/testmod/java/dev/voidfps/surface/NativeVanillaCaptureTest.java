@@ -497,48 +497,6 @@ final class NativeVanillaCaptureTest {
         }
     }
 
-    /**
-     * Validates the real native vertex format's element descriptors before treating
-     * its byte stream as a usable baseline. This deliberately checks only generic
-     * layout invariants and does not assume a particular element ordering or format.
-     */
-    private static void validateCapturedVertexFormat(
-            com.mojang.blaze3d.vertex.VertexFormat format,
-            int vertexStride,
-            ChunkSectionLayer layer) {
-        if (vertexStride <= 0 || format.getElements().isEmpty()) {
-            throw new IllegalStateException(
-                    "Vanilla section mesh has an empty vertex format for " + layer
-                            + ": stride=" + vertexStride + ", format=" + format);
-        }
-
-        java.util.Set<String> names = new java.util.HashSet<>();
-        java.util.Set<Integer> offsets = new java.util.HashSet<>();
-        int previousOffset = -1;
-        for (var element : format.getElements()) {
-            String name = element.name();
-            int offset = element.offset();
-            if (name == null || name.isBlank() || !names.add(name)) {
-                throw new IllegalStateException(
-                        "Vanilla section mesh has a missing or duplicate vertex element name for "
-                                + layer + ": " + name + ", format=" + format);
-            }
-            if (offset < 0 || offset >= vertexStride || !offsets.add(offset)) {
-                throw new IllegalStateException(
-                        "Vanilla section mesh has an invalid or duplicate vertex element offset for "
-                                + layer + ": element=" + name + ", offset=" + offset
-                                + ", stride=" + vertexStride + ", format=" + format);
-            }
-            if (offset <= previousOffset) {
-                throw new IllegalStateException(
-                        "Vanilla section mesh vertex elements are not in increasing byte-offset order for "
-                                + layer + ": element=" + name + ", offset=" + offset
-                                + ", format=" + format);
-            }
-            previousOffset = offset;
-        }
-    }
-
     private static Map<ChunkSectionLayer, MeshSnapshot> captureVanillaSectionMeshes(
             SectionCompiler compiler,
             SectionPos sectionPos,
@@ -557,7 +515,39 @@ final class NativeVanillaCaptureTest {
                 MeshData.DrawState drawState = mesh.drawState();
                 int vertexCount = drawState.vertexCount();
                 int vertexStride = drawState.format().getVertexSize();
-                validateCapturedVertexFormat(drawState.format(), vertexStride, entry.getKey());
+                if (vertexStride <= 0 || drawState.format().getElements().isEmpty()) {
+                    throw new IllegalStateException(
+                            "Vanilla section mesh has an empty vertex format for " + entry.getKey()
+                                    + ": stride=" + vertexStride + ", format=" + drawState.format());
+                }
+                java.util.Set<String> elementNames = new java.util.HashSet<>();
+                java.util.Set<Integer> elementOffsets = new java.util.HashSet<>();
+                int previousElementOffset = -1;
+                for (var element : drawState.format().getElements()) {
+                    String elementName = element.name();
+                    int elementOffset = element.offset();
+                    if (elementName == null || elementName.isBlank() || !elementNames.add(elementName)) {
+                        throw new IllegalStateException(
+                                "Vanilla section mesh has a missing or duplicate vertex element name for "
+                                        + entry.getKey() + ": " + elementName
+                                        + ", format=" + drawState.format());
+                    }
+                    if (elementOffset < 0 || elementOffset >= vertexStride
+                            || !elementOffsets.add(elementOffset)) {
+                        throw new IllegalStateException(
+                                "Vanilla section mesh has an invalid or duplicate vertex element offset for "
+                                        + entry.getKey() + ": element=" + elementName
+                                        + ", offset=" + elementOffset + ", stride=" + vertexStride
+                                        + ", format=" + drawState.format());
+                    }
+                    if (elementOffset <= previousElementOffset) {
+                        throw new IllegalStateException(
+                                "Vanilla section mesh vertex elements are not in increasing byte-offset order for "
+                                        + entry.getKey() + ": element=" + elementName
+                                        + ", offset=" + elementOffset + ", format=" + drawState.format());
+                    }
+                    previousElementOffset = elementOffset;
+                }
                 if (vertexCount <= 0 || vertexStride <= 0) {
                     throw new IllegalStateException(
                             "Vanilla SectionCompiler returned invalid vertex metadata for "
