@@ -147,6 +147,23 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                         "Production geometry gate accepted non-finite vertex for " + direction);
             }
 
+            Vector3f[] infinite = {
+                    new Vector3f(Float.POSITIVE_INFINITY, positions[0].y(), positions[0].z()),
+                    positions[1], positions[2], positions[3]
+            };
+            BakedQuad infiniteQuad = new BakedQuad(
+                    infinite[0], infinite[1], infinite[2], infinite[3],
+                    packUv(uvs[0][0], uvs[0][1]),
+                    packUv(uvs[1][0], uvs[1][1]),
+                    packUv(uvs[2][0], uvs[2][1]),
+                    packUv(uvs[3][0], uvs[3][1]),
+                    direction,
+                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
+            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(infiniteQuad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate accepted infinite vertex for " + direction);
+            }
+
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
             List<NativeVertexRecord> expected = new ArrayList<>(4);
