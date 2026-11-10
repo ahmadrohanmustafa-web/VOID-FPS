@@ -44,6 +44,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             // Use a real unit face plane for each direction instead of reusing an XY quad.
             // This keeps the test geometry consistent with the BakedQuad's declared face.
             Vector3f[] positions = positionsFor(direction);
+            verifyFaceGeometry(direction, positions);
             BakedQuad quad = new BakedQuad(
                     positions[0], positions[1], positions[2], positions[3],
                     packUv(uvs[0][0], uvs[0][1]),
@@ -372,43 +373,82 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         }
     }
 
+    private static void verifyFaceGeometry(Direction direction, Vector3f[] positions) {
+        if (positions.length != 4) {
+            throw new IllegalStateException("Expected four vertices for " + direction);
+        }
+        float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
+        for (Vector3f position : positions) {
+            minX = Math.min(minX, position.x());
+            minY = Math.min(minY, position.y());
+            minZ = Math.min(minZ, position.z());
+            maxX = Math.max(maxX, position.x());
+            maxY = Math.max(maxY, position.y());
+            maxZ = Math.max(maxZ, position.z());
+            float plane = switch (direction.getAxis()) {
+                case X -> position.x();
+                case Y -> position.y();
+                case Z -> position.z();
+            };
+            float expectedPlane = direction.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1.0f : 0.0f;
+            if (plane != expectedPlane) {
+                throw new IllegalStateException("Face geometry is not on the " + direction + " boundary plane");
+            }
+        }
+        if (maxX - minX != (direction.getAxis() == Direction.Axis.X ? 0.0f : 1.0f)
+                || maxY - minY != (direction.getAxis() == Direction.Axis.Y ? 0.0f : 1.0f)
+                || maxZ - minZ != (direction.getAxis() == Direction.Axis.Z ? 0.0f : 1.0f)) {
+            throw new IllegalStateException("Face geometry does not span the expected unit square for " + direction);
+        }
+        Vector3f a = positions[1].sub(positions[0], new Vector3f());
+        Vector3f b = positions[2].sub(positions[0], new Vector3f());
+        Vector3f cross = a.cross(b, new Vector3f());
+        float dot = cross.x() * direction.getStepX()
+                + cross.y() * direction.getStepY()
+                + cross.z() * direction.getStepZ();
+        if (dot <= 0.0f) {
+            throw new IllegalStateException("Face vertex winding does not point outward for " + direction);
+        }
+    }
+
     private static Vector3f[] positionsFor(Direction direction) {
         return switch (direction) {
             case DOWN -> new Vector3f[] {
                     new Vector3f(0.0f, 0.0f, 0.0f),
-                    new Vector3f(0.0f, 0.0f, 1.0f),
+                    new Vector3f(1.0f, 0.0f, 0.0f),
                     new Vector3f(1.0f, 0.0f, 1.0f),
-                    new Vector3f(1.0f, 0.0f, 0.0f)
+                    new Vector3f(0.0f, 0.0f, 1.0f)
             };
             case UP -> new Vector3f[] {
                     new Vector3f(0.0f, 1.0f, 0.0f),
-                    new Vector3f(1.0f, 1.0f, 0.0f),
+                    new Vector3f(0.0f, 1.0f, 1.0f),
                     new Vector3f(1.0f, 1.0f, 1.0f),
-                    new Vector3f(0.0f, 1.0f, 1.0f)
+                    new Vector3f(1.0f, 1.0f, 0.0f)
             };
             case NORTH -> new Vector3f[] {
                     new Vector3f(0.0f, 0.0f, 0.0f),
-                    new Vector3f(1.0f, 0.0f, 0.0f),
+                    new Vector3f(0.0f, 1.0f, 0.0f),
                     new Vector3f(1.0f, 1.0f, 0.0f),
-                    new Vector3f(0.0f, 1.0f, 0.0f)
+                    new Vector3f(1.0f, 0.0f, 0.0f)
             };
             case SOUTH -> new Vector3f[] {
                     new Vector3f(0.0f, 0.0f, 1.0f),
-                    new Vector3f(0.0f, 1.0f, 1.0f),
+                    new Vector3f(1.0f, 0.0f, 1.0f),
                     new Vector3f(1.0f, 1.0f, 1.0f),
-                    new Vector3f(1.0f, 0.0f, 1.0f)
+                    new Vector3f(0.0f, 1.0f, 1.0f)
             };
             case WEST -> new Vector3f[] {
                     new Vector3f(0.0f, 0.0f, 0.0f),
-                    new Vector3f(0.0f, 1.0f, 0.0f),
+                    new Vector3f(0.0f, 0.0f, 1.0f),
                     new Vector3f(0.0f, 1.0f, 1.0f),
-                    new Vector3f(0.0f, 0.0f, 1.0f)
+                    new Vector3f(0.0f, 1.0f, 0.0f)
             };
             case EAST -> new Vector3f[] {
                     new Vector3f(1.0f, 0.0f, 0.0f),
-                    new Vector3f(1.0f, 0.0f, 1.0f),
+                    new Vector3f(1.0f, 1.0f, 0.0f),
                     new Vector3f(1.0f, 1.0f, 1.0f),
-                    new Vector3f(1.0f, 1.0f, 0.0f)
+                    new Vector3f(1.0f, 0.0f, 1.0f)
             };
         };
     }
