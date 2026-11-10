@@ -151,8 +151,23 @@ public final class NativeModelSnapshot {
             float normalX = e1y * e2z - e1z * e2y;
             float normalY = e1z * e2x - e1x * e2z;
             float normalZ = e1x * e2y - e1y * e2x;
-            float outwardDot = normalX * dx + normalY * dy + normalZ * dz;
-            return Float.isFinite(outwardDot) && outwardDot > GEOMETRY_EPSILON;
+            float firstTriangleDot = normalX * dx + normalY * dy + normalZ * dz;
+
+            // Validate the second triangle too. This rejects crossed/bow-tie vertex
+            // orders whose first three corners happen to point outward but whose
+            // fourth corner reverses the quad's winding.
+            var p3 = quad.position(3);
+            float e3x = p3.x() - p0.x();
+            float e3y = p3.y() - p0.y();
+            float e3z = p3.z() - p0.z();
+            float secondNormalX = e2y * e3z - e2z * e3y;
+            float secondNormalY = e2z * e3x - e2x * e3z;
+            float secondNormalZ = e2x * e3y - e2y * e3x;
+            float secondTriangleDot = secondNormalX * dx
+                    + secondNormalY * dy + secondNormalZ * dz;
+            return Float.isFinite(firstTriangleDot) && Float.isFinite(secondTriangleDot)
+                    && firstTriangleDot > GEOMETRY_EPSILON
+                    && secondTriangleDot > GEOMETRY_EPSILON;
         }
 
         private static boolean nearUnitCoordinate(float value) {
