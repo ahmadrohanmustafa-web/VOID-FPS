@@ -105,7 +105,7 @@ public final class NativeModelSnapshot {
             return true;
         }
 
-        private static boolean isUnitBoundaryQuad(BakedQuad quad, Direction direction) {
+        static boolean isUnitBoundaryQuad(BakedQuad quad, Direction direction) {
             int dx = direction.getStepX();
             int dy = direction.getStepY();
             int dz = direction.getStepZ();
