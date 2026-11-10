@@ -27,12 +27,6 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
     public void onInitializeClient() {
         NativeVertexRecorder recorder = new NativeVertexRecorder();
 
-        Vector3f[] positions = {
-                new Vector3f(0.0f, 0.0f, 0.0f),
-                new Vector3f(1.0f, 0.0f, 0.0f),
-                new Vector3f(1.0f, 1.0f, 0.0f),
-                new Vector3f(0.0f, 1.0f, 0.0f)
-        };
         float[][] uvs = {
                 {0.125f, 0.25f},
                 {0.375f, 0.50f},
@@ -47,6 +41,9 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
         // This verifies that Minecraft's real packed-vertex path preserves UV/color/light
         // data and emits the expected direction normal for every face orientation.
         for (Direction direction : Direction.values()) {
+            // Use a real unit face plane for each direction instead of reusing an XY quad.
+            // This keeps the test geometry consistent with the BakedQuad's declared face.
+            Vector3f[] positions = positionsFor(direction);
             BakedQuad quad = new BakedQuad(
                     positions[0], positions[1], positions[2], positions[3],
                     packUv(uvs[0][0], uvs[0][1]),
@@ -373,6 +370,47 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                         "Vanilla unexpectedly rendered the internal stone face on " + direction);
             }
         }
+    }
+
+    private static Vector3f[] positionsFor(Direction direction) {
+        return switch (direction) {
+            case DOWN -> new Vector3f[] {
+                    new Vector3f(0.0f, 0.0f, 0.0f),
+                    new Vector3f(0.0f, 0.0f, 1.0f),
+                    new Vector3f(1.0f, 0.0f, 1.0f),
+                    new Vector3f(1.0f, 0.0f, 0.0f)
+            };
+            case UP -> new Vector3f[] {
+                    new Vector3f(0.0f, 1.0f, 0.0f),
+                    new Vector3f(1.0f, 1.0f, 0.0f),
+                    new Vector3f(1.0f, 1.0f, 1.0f),
+                    new Vector3f(0.0f, 1.0f, 1.0f)
+            };
+            case NORTH -> new Vector3f[] {
+                    new Vector3f(0.0f, 0.0f, 0.0f),
+                    new Vector3f(1.0f, 0.0f, 0.0f),
+                    new Vector3f(1.0f, 1.0f, 0.0f),
+                    new Vector3f(0.0f, 1.0f, 0.0f)
+            };
+            case SOUTH -> new Vector3f[] {
+                    new Vector3f(0.0f, 0.0f, 1.0f),
+                    new Vector3f(0.0f, 1.0f, 1.0f),
+                    new Vector3f(1.0f, 1.0f, 1.0f),
+                    new Vector3f(1.0f, 0.0f, 1.0f)
+            };
+            case WEST -> new Vector3f[] {
+                    new Vector3f(0.0f, 0.0f, 0.0f),
+                    new Vector3f(0.0f, 1.0f, 0.0f),
+                    new Vector3f(0.0f, 1.0f, 1.0f),
+                    new Vector3f(0.0f, 0.0f, 1.0f)
+            };
+            case EAST -> new Vector3f[] {
+                    new Vector3f(1.0f, 0.0f, 0.0f),
+                    new Vector3f(1.0f, 0.0f, 1.0f),
+                    new Vector3f(1.0f, 1.0f, 1.0f),
+                    new Vector3f(1.0f, 1.0f, 0.0f)
+            };
+        };
     }
 
     private static long packUv(float u, float v) {
