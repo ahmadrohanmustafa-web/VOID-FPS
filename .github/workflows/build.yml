@@ -42,7 +42,7 @@ jobs:
             exit "$status"
           fi
           grep -q "VOID FPS loaded. No block/terrain optimizations are active" build/void-fps-client-smoke.log
-          grep -q "VOID FPS native putBlockBakedQuad UV and emission test passed" build/void-fps-client-smoke.log
+          grep -q "VOID FPS native putBlockBakedQuad all-six-directions UV, color, light, normal, and emission test passed" build/void-fps-client-smoke.log
           grep -q "VOID FPS resource-loaded stone model snapshot passed" build/void-fps-client-smoke.log
           grep -q "VOID FPS real resource-pack override passed: selected through PackRepository, Minecraft reload completed, stone model snapshot differs from vanilla, six-face full-cube geometry remains eligible" build/void-fps-client-smoke.log
           grep -q "VOID FPS real partial-geometry resource-pack override passed: live reload exposed half-height model and native eligibility required vanilla fallback" build/void-fps-client-smoke.log
