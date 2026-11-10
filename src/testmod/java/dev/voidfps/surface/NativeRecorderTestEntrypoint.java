@@ -129,57 +129,10 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                         "Production geometry gate accepted off-boundary vertex for " + direction);
             }
 
-            // Non-finite coordinates must never enter the candidate geometry path.
-            Vector3f[] nonFinite = {
-                    new Vector3f(Float.NaN, positions[0].y(), positions[0].z()),
-                    positions[1], positions[2], positions[3]
-            };
-            BakedQuad nonFiniteQuad = new BakedQuad(
-                    nonFinite[0], nonFinite[1], nonFinite[2], nonFinite[3],
-                    packUv(uvs[0][0], uvs[0][1]),
-                    packUv(uvs[1][0], uvs[1][1]),
-                    packUv(uvs[2][0], uvs[2][1]),
-                    packUv(uvs[3][0], uvs[3][1]),
-                    direction,
-                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
-            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(nonFiniteQuad, direction)) {
-                throw new IllegalStateException(
-                        "Production geometry gate accepted non-finite vertex for " + direction);
-            }
-
-            Vector3f[] infinite = {
-                    new Vector3f(Float.POSITIVE_INFINITY, positions[0].y(), positions[0].z()),
-                    positions[1], positions[2], positions[3]
-            };
-            BakedQuad infiniteQuad = new BakedQuad(
-                    infinite[0], infinite[1], infinite[2], infinite[3],
-                    packUv(uvs[0][0], uvs[0][1]),
-                    packUv(uvs[1][0], uvs[1][1]),
-                    packUv(uvs[2][0], uvs[2][1]),
-                    packUv(uvs[3][0], uvs[3][1]),
-                    direction,
-                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
-            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(infiniteQuad, direction)) {
-                throw new IllegalStateException(
-                        "Production geometry gate accepted infinite vertex for " + direction);
-            }
-
-            Vector3f[] negativeInfinite = {
-                    new Vector3f(Float.NEGATIVE_INFINITY, positions[0].y(), positions[0].z()),
-                    positions[1], positions[2], positions[3]
-            };
-            BakedQuad negativeInfiniteQuad = new BakedQuad(
-                    negativeInfinite[0], negativeInfinite[1], negativeInfinite[2], negativeInfinite[3],
-                    packUv(uvs[0][0], uvs[0][1]),
-                    packUv(uvs[1][0], uvs[1][1]),
-                    packUv(uvs[2][0], uvs[2][1]),
-                    packUv(uvs[3][0], uvs[3][1]),
-                    direction,
-                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
-            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(negativeInfiniteQuad, direction)) {
-                throw new IllegalStateException(
-                        "Production geometry gate accepted negative-infinite vertex for " + direction);
-            }
+            // Probe every vertex component, not just vertex zero's X coordinate.
+            // The production gate must reject NaN and both infinities regardless of
+            // which face axis, corner, or coordinate component contains the bad value.
+            verifyNonFiniteGeometry(direction, positions, uvs);
 
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
@@ -496,6 +449,48 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             if (net.minecraft.world.level.block.Block.shouldRenderFace(stone, stone, direction)) {
                 throw new IllegalStateException(
                         "Vanilla unexpectedly rendered the internal stone face on " + direction);
+            }
+        }
+    }
+
+    private static void verifyNonFiniteGeometry(
+            Direction direction, Vector3f[] positions, float[][] uvs) {
+        float[] invalidValues = {
+                Float.NaN,
+                Float.POSITIVE_INFINITY,
+                Float.NEGATIVE_INFINITY
+        };
+        String[] invalidLabels = {"NaN", "positive infinity", "negative infinity"};
+
+        for (int vertex = 0; vertex < positions.length; vertex++) {
+            for (int axis = 0; axis < 3; axis++) {
+                for (int invalidIndex = 0; invalidIndex < invalidValues.length; invalidIndex++) {
+                    Vector3f[] malformed = positions.clone();
+                    Vector3f original = positions[vertex];
+                    Vector3f changed = new Vector3f(original);
+                    switch (axis) {
+                        case 0 -> changed.x = invalidValues[invalidIndex];
+                        case 1 -> changed.y = invalidValues[invalidIndex];
+                        case 2 -> changed.z = invalidValues[invalidIndex];
+                        default -> throw new IllegalStateException("Unexpected coordinate axis " + axis);
+                    }
+                    malformed[vertex] = changed;
+
+                    BakedQuad malformedQuad = new BakedQuad(
+                            malformed[0], malformed[1], malformed[2], malformed[3],
+                            packUv(uvs[0][0], uvs[0][1]),
+                            packUv(uvs[1][0], uvs[1][1]),
+                            packUv(uvs[2][0], uvs[2][1]),
+                            packUv(uvs[3][0], uvs[3][1]),
+                            direction,
+                            new MaterialInfo(null, null, null, null, null, -1, null, 7));
+                    if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(malformedQuad, direction)) {
+                        throw new IllegalStateException(
+                                "Production geometry gate accepted " + invalidLabels[invalidIndex]
+                                        + " at vertex " + vertex + ", axis " + axis
+                                        + " for " + direction);
+                    }
+                }
             }
         }
     }
