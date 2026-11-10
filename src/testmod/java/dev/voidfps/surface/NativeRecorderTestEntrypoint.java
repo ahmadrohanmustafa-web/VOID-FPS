@@ -374,18 +374,25 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
     }
 
     private static void verifyFaceGeometry(Direction direction, Vector3f[] positions) {
-        if (positions.length != 4) {
+        if (positions == null || positions.length != 4) {
             throw new IllegalStateException("Expected four vertices for " + direction);
         }
+
+        int cornerMask = 0;
         float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
         float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
         for (Vector3f position : positions) {
+            if (position == null || !Float.isFinite(position.x())
+                    || !Float.isFinite(position.y()) || !Float.isFinite(position.z())) {
+                throw new IllegalStateException("Face geometry contains a missing or non-finite vertex for " + direction);
+            }
             minX = Math.min(minX, position.x());
             minY = Math.min(minY, position.y());
             minZ = Math.min(minZ, position.z());
             maxX = Math.max(maxX, position.x());
             maxY = Math.max(maxY, position.y());
             maxZ = Math.max(maxZ, position.z());
+
             float plane = switch (direction.getAxis()) {
                 case X -> position.x();
                 case Y -> position.y();
@@ -395,12 +402,38 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             if (plane != expectedPlane) {
                 throw new IllegalStateException("Face geometry is not on the " + direction + " boundary plane");
             }
+
+            // The two coordinates not fixed by the face normal must visit each
+            // corner of the unit square exactly once; matching only the bounding
+            // box would otherwise allow a duplicated corner and a missing corner.
+            int first = switch (direction.getAxis()) {
+                case X -> position.y() == 1.0f ? 1 : position.y() == 0.0f ? 0 : -1;
+                case Y -> position.x() == 1.0f ? 1 : position.x() == 0.0f ? 0 : -1;
+                case Z -> position.x() == 1.0f ? 1 : position.x() == 0.0f ? 0 : -1;
+            };
+            int second = switch (direction.getAxis()) {
+                case X -> position.z() == 1.0f ? 1 : position.z() == 0.0f ? 0 : -1;
+                case Y -> position.z() == 1.0f ? 1 : position.z() == 0.0f ? 0 : -1;
+                case Z -> position.y() == 1.0f ? 1 : position.y() == 0.0f ? 0 : -1;
+            };
+            if (first < 0 || second < 0) {
+                throw new IllegalStateException("Face vertex is not a unit-square corner for " + direction);
+            }
+            int corner = (first << 1) | second;
+            int bit = 1 << corner;
+            if ((cornerMask & bit) != 0) {
+                throw new IllegalStateException("Face geometry repeats a unit-square corner for " + direction);
+            }
+            cornerMask |= bit;
         }
-        if (maxX - minX != (direction.getAxis() == Direction.Axis.X ? 0.0f : 1.0f)
+
+        if (cornerMask != 0b1111
+                || maxX - minX != (direction.getAxis() == Direction.Axis.X ? 0.0f : 1.0f)
                 || maxY - minY != (direction.getAxis() == Direction.Axis.Y ? 0.0f : 1.0f)
                 || maxZ - minZ != (direction.getAxis() == Direction.Axis.Z ? 0.0f : 1.0f)) {
-            throw new IllegalStateException("Face geometry does not span the expected unit square for " + direction);
+            throw new IllegalStateException("Face geometry does not contain all four unit-square corners for " + direction);
         }
+
         Vector3f a = positions[1].sub(positions[0], new Vector3f());
         Vector3f b = positions[2].sub(positions[0], new Vector3f());
         Vector3f cross = a.cross(b, new Vector3f());
