@@ -54,6 +54,29 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                     direction,
                     new MaterialInfo(null, null, null, null, null, -1, null, 7));
 
+            // Exercise the production model-eligibility geometry gate itself:
+            // outward winding must pass, while the same face with reversed vertex
+            // order must be rejected even though its four corners remain unchanged.
+            if (!NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(quad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate rejected outward unit face for " + direction);
+            }
+            Vector3f[] reversed = {
+                    positions[0], positions[3], positions[2], positions[1]
+            };
+            BakedQuad reversedQuad = new BakedQuad(
+                    reversed[0], reversed[1], reversed[2], reversed[3],
+                    packUv(uvs[0][0], uvs[0][1]),
+                    packUv(uvs[1][0], uvs[1][1]),
+                    packUv(uvs[2][0], uvs[2][1]),
+                    packUv(uvs[3][0], uvs[3][1]),
+                    direction,
+                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
+            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(reversedQuad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate accepted reversed unit face for " + direction);
+            }
+
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
             List<NativeVertexRecord> expected = new ArrayList<>(4);
