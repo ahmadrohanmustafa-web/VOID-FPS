@@ -76,6 +76,21 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                 throw new IllegalStateException(
                         "Production geometry gate accepted reversed unit face for " + direction);
             }
+            Vector3f[] crossed = {
+                    positions[0], positions[1], positions[3], positions[2]
+            };
+            BakedQuad crossedQuad = new BakedQuad(
+                    crossed[0], crossed[1], crossed[2], crossed[3],
+                    packUv(uvs[0][0], uvs[0][1]),
+                    packUv(uvs[1][0], uvs[1][1]),
+                    packUv(uvs[2][0], uvs[2][1]),
+                    packUv(uvs[3][0], uvs[3][1]),
+                    direction,
+                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
+            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(crossedQuad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate accepted crossed unit face for " + direction);
+            }
 
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
