@@ -92,6 +92,43 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                         "Production geometry gate accepted crossed unit face for " + direction);
             }
 
+            // A repeated corner must not pass merely because the remaining points
+            // still lie on the correct boundary plane.
+            BakedQuad duplicateCornerQuad = new BakedQuad(
+                    positions[0], positions[0], positions[2], positions[3],
+                    packUv(uvs[0][0], uvs[0][1]),
+                    packUv(uvs[1][0], uvs[1][1]),
+                    packUv(uvs[2][0], uvs[2][1]),
+                    packUv(uvs[3][0], uvs[3][1]),
+                    direction,
+                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
+            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(duplicateCornerQuad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate accepted duplicate corner for " + direction);
+            }
+
+            // A vertex just outside the documented boundary tolerance must fall
+            // back to vanilla rather than being rounded into a full-cube face.
+            Vector3f[] offBoundary = {
+                    new Vector3f(
+                            positions[0].x() + direction.getStepX() * 0.001f,
+                            positions[0].y() + direction.getStepY() * 0.001f,
+                            positions[0].z() + direction.getStepZ() * 0.001f),
+                    positions[1], positions[2], positions[3]
+            };
+            BakedQuad offBoundaryQuad = new BakedQuad(
+                    offBoundary[0], offBoundary[1], offBoundary[2], offBoundary[3],
+                    packUv(uvs[0][0], uvs[0][1]),
+                    packUv(uvs[1][0], uvs[1][1]),
+                    packUv(uvs[2][0], uvs[2][1]),
+                    packUv(uvs[3][0], uvs[3][1]),
+                    direction,
+                    new MaterialInfo(null, null, null, null, null, -1, null, 7));
+            if (NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(offBoundaryQuad, direction)) {
+                throw new IllegalStateException(
+                        "Production geometry gate accepted off-boundary vertex for " + direction);
+            }
+
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
             List<NativeVertexRecord> expected = new ArrayList<>(4);
