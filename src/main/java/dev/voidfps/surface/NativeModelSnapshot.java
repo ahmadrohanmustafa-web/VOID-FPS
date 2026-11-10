@@ -135,7 +135,24 @@ public final class NativeModelSnapshot {
                 corners[corner] = true;
             }
 
-            return true;
+            // A correct bounding square is not enough: reversed or otherwise
+            // misordered vertices can change front-face winding. Require the first
+            // triangle's geometric normal to point along the baked quad's declared
+            // face direction before this model can enter the narrow candidate path.
+            var p0 = quad.position(0);
+            var p1 = quad.position(1);
+            var p2 = quad.position(2);
+            float e1x = p1.x() - p0.x();
+            float e1y = p1.y() - p0.y();
+            float e1z = p1.z() - p0.z();
+            float e2x = p2.x() - p0.x();
+            float e2y = p2.y() - p0.y();
+            float e2z = p2.z() - p0.z();
+            float normalX = e1y * e2z - e1z * e2y;
+            float normalY = e1z * e2x - e1x * e2z;
+            float normalZ = e1x * e2y - e1y * e2x;
+            float outwardDot = normalX * dx + normalY * dy + normalZ * dz;
+            return Float.isFinite(outwardDot) && outwardDot > GEOMETRY_EPSILON;
         }
 
         private static boolean nearUnitCoordinate(float value) {
