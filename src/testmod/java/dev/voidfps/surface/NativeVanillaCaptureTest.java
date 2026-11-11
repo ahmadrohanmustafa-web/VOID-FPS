@@ -402,7 +402,8 @@ final class NativeVanillaCaptureTest {
         RenderSectionRegion region = createSectionRegion(level, pos, state);
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
         verifyNativeSectionCompilerMeshCapture(level, pos, region);
-        verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos));
+        verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos), false);
+        verifyMixedEligibilitySectionTraversal(level, pos, state);
         System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
                 + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
 
@@ -510,7 +511,7 @@ final class NativeVanillaCaptureTest {
      * fallback; this does not replace SectionCompiler or create production MeshData.
      */
     private static void verifyCandidateSectionShadowTraversal(
-            RenderSectionRegion region, SectionPos sectionPos) {
+            RenderSectionRegion region, SectionPos sectionPos, boolean requireFallback) {
         Minecraft minecraft = Minecraft.getInstance();
         int minX = sectionPos.x() << 4;
         int minY = sectionPos.y() << 4;
@@ -561,12 +562,71 @@ final class NativeVanillaCaptureTest {
                             + visitedNonAir + ", eligible=" + eligible
                             + ", fallback=" + fallback + ", section=" + sectionPos);
         }
+        if (requireFallback && fallback == 0) {
+            throw new IllegalStateException(
+                    "Mixed-eligibility section fixture did not exercise any vanilla fallback blocks");
+        }
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
                 + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
+    }
+
+    /**
+     * Places representative partial/non-cubic models inside the same real section,
+     * snapshots the updated region, and proves the conservative gate leaves them
+     * on vanilla fallback while still testing eligible full cubes in that section.
+     * Every changed block is restored even if traversal fails.
+     */
+    private static void verifyMixedEligibilitySectionTraversal(
+            ClientLevel level, BlockPos origin, BlockState expectedOriginState) {
+        SectionPos sectionPos = SectionPos.of(origin);
+        int minX = sectionPos.x() << 4;
+        int minY = sectionPos.y() << 4;
+        int minZ = sectionPos.z() << 4;
+        BlockState[] fallbackStates = {
+                Blocks.OAK_SLAB.defaultBlockState(),
+                Blocks.OAK_FENCE.defaultBlockState(),
+                Blocks.GLASS_PANE.defaultBlockState(),
+                Blocks.OAK_LEAVES.defaultBlockState(),
+                Blocks.TORCH.defaultBlockState(),
+                Blocks.OAK_STAIRS.defaultBlockState()
+        };
+        Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
+        previousStates.put(origin, level.getBlockState(origin));
+        if (!previousStates.get(origin).equals(expectedOriginState)) {
+            throw new IllegalStateException("Mixed section fixture origin changed before setup");
+        }
+
+        try {
+            for (int index = 0; index < fallbackStates.length; index++) {
+                BlockPos fixture = new BlockPos(
+                        minX + 2 + index * 2, minY + 1, minZ + 2);
+                previousStates.put(fixture, level.getBlockState(fixture));
+                level.setBlock(fixture, fallbackStates[index], 3);
+                if (!level.getBlockState(fixture).equals(fallbackStates[index])) {
+                    throw new IllegalStateException(
+                            "Could not place mixed-eligibility fixture " + fallbackStates[index]
+                                    + " at " + fixture);
+                }
+            }
+
+            RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
+            verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
+            System.out.println("VOID FPS mixed-eligibility section fixture passed: "
+                    + "partialAndNonCubicStates=" + fallbackStates.length
+                    + ", vanillaFallbackRequired=true");
+        } finally {
+            for (var entry : previousStates.entrySet()) {
+                level.setBlock(entry.getKey(), entry.getValue(), 3);
+                if (!level.getBlockState(entry.getKey()).equals(entry.getValue())) {
+                    throw new IllegalStateException(
+                            "Could not restore mixed-eligibility fixture block at " + entry.getKey());
+                }
+            }
+        }
     }
 
     private static Map<ChunkSectionLayer, MeshSnapshot> captureVanillaSectionMeshes(
