@@ -518,7 +518,7 @@ final class NativeVanillaCaptureTest {
         int visitedNonAir = 0;
         int eligible = 0;
         int fallback = 0;
-        int comparedVertices = 0;
+        int comparedVertexRecords = 0;
 
         for (int y = minY; y < minY + 16; y++) {
             for (int z = minZ; z < minZ + 16; z++) {
@@ -547,14 +547,10 @@ final class NativeVanillaCaptureTest {
                         continue;
                     }
 
-                    verifyCandidateVertexOutput(
+                    comparedVertexRecords += verifyCandidateVertexOutput(
                             region, blockPos, state, model, seed,
                             "section-shadow-" + x + "-" + y + "-" + z);
                     eligible++;
-                    comparedVertices += snapshot.parts().stream()
-                            .flatMap(part -> part.directionalQuads().stream())
-                            .mapToInt(face -> face.quads().size() * 4)
-                            .sum();
                 }
             }
         }
@@ -568,7 +564,7 @@ final class NativeVanillaCaptureTest {
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
                 + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
-                + ", candidateModelVerticesVisited=" + comparedVertices
+                + ", candidateVertexRecordsCompared=" + comparedVertexRecords
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
     }
@@ -750,17 +746,17 @@ final class NativeVanillaCaptureTest {
      * seed, and thread-local BlockModelLighter cache. The current eligible set excludes tint,
      * offset functions, unculled quads, and non-solid/emissive materials.
      */
-    private static void verifyCandidateVertexOutput(
+    private static int verifyCandidateVertexOutput(
             BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
             BlockStateModel model,
             long seed,
             String scenario) {
-        verifyCandidateVertexOutput(level, pos, state, model, seed, scenario, true, true);
+        return verifyCandidateVertexOutput(level, pos, state, model, seed, scenario, true, true);
     }
 
-    private static void verifyCandidateVertexOutput(
+    private static int verifyCandidateVertexOutput(
             BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
@@ -788,6 +784,7 @@ final class NativeVanillaCaptureTest {
             System.out.println("VOID FPS candidate native vertex-output parity passed: scenario="
                     + scenario + ", vertices=" + parity.comparedVertices()
                     + ", exact=true, cacheScope=shared");
+            return parity.comparedVertices();
         } finally {
             BlockModelLighter.clearCache();
         }
