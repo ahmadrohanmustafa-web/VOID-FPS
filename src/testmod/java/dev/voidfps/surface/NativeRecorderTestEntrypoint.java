@@ -133,6 +133,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             // The production gate must reject NaN and both infinities regardless of
             // which face axis, corner, or coordinate component contains the bad value.
             verifyNonFiniteGeometry(direction, positions, uvs);
+            verifyGeometryTolerance(direction, positions, uvs);
 
             QuadInstance instance = new QuadInstance();
             instance.setOverlayCoords(overlay);
@@ -449,6 +450,56 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
             if (net.minecraft.world.level.block.Block.shouldRenderFace(stone, stone, direction)) {
                 throw new IllegalStateException(
                         "Vanilla unexpectedly rendered the internal stone face on " + direction);
+            }
+        }
+    }
+
+    /**
+     * Pins the production geometry gate's documented 1e-4 boundary tolerance.
+     * Tiny coordinate drift within the tolerance remains eligible; drift beyond it
+     * must conservatively fall back to vanilla for every face direction and corner.
+     */
+    private static void verifyGeometryTolerance(
+            Direction direction, Vector3f[] positions, float[][] uvs) {
+        float[] offsets = {0.00005f, 0.0002f};
+        String[] labels = {"inside tolerance", "outside tolerance"};
+
+        for (int vertex = 0; vertex < positions.length; vertex++) {
+            for (int mode = 0; mode < 2; mode++) {
+                Vector3f original = positions[vertex];
+                Vector3f changed = new Vector3f(original);
+                float offset = offsets[mode];
+                if (mode == 0) {
+                    changed.set(
+                            original.x() + direction.getStepX() * offset,
+                            original.y() + direction.getStepY() * offset,
+                            original.z() + direction.getStepZ() * offset);
+                } else {
+                    // Move a tangent coordinate away from its nearest unit-square corner.
+                    int tangentAxis = direction.getAxis() == Direction.Axis.X ? 1 : 0;
+                    float coordinate = tangentAxis == 0 ? original.x() : original.y();
+                    float delta = coordinate < 0.5f ? offset : -offset;
+                    if (tangentAxis == 0) changed.x += delta;
+                    else changed.y += delta;
+                }
+
+                Vector3f[] adjusted = positions.clone();
+                adjusted[vertex] = changed;
+                BakedQuad quad = new BakedQuad(
+                        adjusted[0], adjusted[1], adjusted[2], adjusted[3],
+                        packUv(uvs[0][0], uvs[0][1]),
+                        packUv(uvs[1][0], uvs[1][1]),
+                        packUv(uvs[2][0], uvs[2][1]),
+                        packUv(uvs[3][0], uvs[3][1]),
+                        direction,
+                        new MaterialInfo(null, null, null, null, null, -1, null, 7));
+                boolean accepted = NativeModelSnapshot.Snapshot.isUnitBoundaryQuad(quad, direction);
+                boolean expectedAccepted = mode == 0;
+                if (accepted != expectedAccepted) {
+                    throw new IllegalStateException(
+                            "Geometry tolerance mismatch for " + direction
+                                    + " vertex " + vertex + " (" + labels[mode] + ")");
+                }
             }
         }
     }
