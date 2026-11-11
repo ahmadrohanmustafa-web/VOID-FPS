@@ -47,7 +47,7 @@ if not candidate_capture_path.is_file():
 else:
     candidate_capture_source = candidate_capture_path.read_text(errors="replace")
     candidate_cache_scope = re.search(
-        r"private static void verifyCandidateVertexOutput\(.*?\)\s*\{"
+        r"private static (?:void|int) verifyCandidateVertexOutput\(.*?\)\s*\{"
         r"\s*BlockModelLighter\.enableCaching\(\);"
         r"\s*try\s*\{.*?"
         r"\}\s*finally\s*\{\s*BlockModelLighter\.clearCache\(\);\s*\}",
