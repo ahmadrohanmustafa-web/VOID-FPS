@@ -478,7 +478,7 @@ public final class NativeRecorderTestEntrypoint implements ClientModInitializer 
                     // Move a tangent coordinate away from its nearest unit-square corner.
                     int tangentAxis = direction.getAxis() == Direction.Axis.X ? 1 : 0;
                     float coordinate = tangentAxis == 0 ? original.x() : original.y();
-                    float delta = coordinate < 0.5f ? offset : -offset;
+                    float delta = coordinate < 0.5f ? -offset : offset;
                     if (tangentAxis == 0) changed.x += delta;
                     else changed.y += delta;
                 }
