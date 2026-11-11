@@ -402,6 +402,7 @@ final class NativeVanillaCaptureTest {
         RenderSectionRegion region = createSectionRegion(level, pos, state);
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
         verifyNativeSectionCompilerMeshCapture(level, pos, region);
+        verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos));
         System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
                 + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
 
@@ -498,6 +499,78 @@ final class NativeVanillaCaptureTest {
         } finally {
             buffers.close();
         }
+    }
+
+
+    /**
+     * Shadow-only section traversal: visit every block position in the real 16x16x16
+     * section snapshot, run the independent candidate emitter for every geometry that
+     * passes the conservative eligibility gate, and compare its ordered native vertex
+     * records against vanilla ModelBlockRenderer. Ineligible states remain vanilla
+     * fallback; this does not replace SectionCompiler or create production MeshData.
+     */
+    private static void verifyCandidateSectionShadowTraversal(
+            RenderSectionRegion region, SectionPos sectionPos) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int minX = sectionPos.x() << 4;
+        int minY = sectionPos.y() << 4;
+        int minZ = sectionPos.z() << 4;
+        int visitedNonAir = 0;
+        int eligible = 0;
+        int fallback = 0;
+        int comparedVertices = 0;
+
+        for (int y = minY; y < minY + 16; y++) {
+            for (int z = minZ; z < minZ + 16; z++) {
+                for (int x = minX; x < minX + 16; x++) {
+                    BlockPos blockPos = new BlockPos(x, y, z);
+                    BlockState state = region.getBlockState(blockPos);
+                    if (state.isAir()) {
+                        continue;
+                    }
+                    visitedNonAir++;
+
+                    BlockStateModel model = minecraft.getModelManager()
+                            .getBlockStateModelSet().get(state);
+                    if (model == null) {
+                        throw new IllegalStateException(
+                                "Section shadow traversal found no model for " + state
+                                        + " at " + blockPos);
+                    }
+                    long seed = state.getSeed(blockPos);
+                    NativeModelSnapshot.Snapshot snapshot = NativeModelSnapshot.collect(
+                            model, net.minecraft.util.RandomSource.create(seed));
+                    SurfaceEligibility.NativeGeometryAnalysis analysis =
+                            SurfaceEligibility.analyzeNativeModel(state, snapshot);
+                    if (!analysis.supported()) {
+                        fallback++;
+                        continue;
+                    }
+
+                    verifyCandidateVertexOutput(
+                            region, blockPos, state, model, seed,
+                            "section-shadow-" + x + "-" + y + "-" + z);
+                    eligible++;
+                    comparedVertices += snapshot.parts().stream()
+                            .flatMap(part -> part.directionalQuads().stream())
+                            .mapToInt(face -> face.quads().size() * 4)
+                            .sum();
+                }
+            }
+        }
+
+        if (visitedNonAir == 0 || eligible == 0) {
+            throw new IllegalStateException(
+                    "Section shadow traversal did not exercise eligible geometry: nonAir="
+                            + visitedNonAir + ", eligible=" + eligible
+                            + ", fallback=" + fallback + ", section=" + sectionPos);
+        }
+        System.out.println("VOID FPS candidate section shadow traversal passed: section="
+                + sectionPos + ", nonAirBlocks=" + visitedNonAir
+                + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
+                + ", candidateModelVerticesVisited=" + comparedVertices
+                + ", perBlockNativeParityExact=true"
+                + ", fullSectionMeshReplacement=false");
     }
 
     private static Map<ChunkSectionLayer, MeshSnapshot> captureVanillaSectionMeshes(
