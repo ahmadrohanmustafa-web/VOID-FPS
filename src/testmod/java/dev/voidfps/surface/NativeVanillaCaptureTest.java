@@ -660,8 +660,25 @@ final class NativeVanillaCaptureTest {
                             "Mixed-eligibility fixture unexpectedly passed candidate geometry gate: "
                                     + fixtureState);
                 }
+
+                // Confirm the fallback is real geometry, not an empty or missing model.
+                // Capture through Minecraft's native ModelBlockRenderer with the fixture's
+                // actual world neighbours and position-derived model seed.
+                Capture vanillaFixture = capture(
+                        level, fixture, fixtureState, fixtureModel, fixtureState.getSeed(fixture));
+                if (vanillaFixture.quads().isEmpty() || vanillaFixture.vertices().isEmpty()
+                        || vanillaFixture.vertices().size() != vanillaFixture.quads().size() * 4) {
+                    throw new IllegalStateException(
+                            "Ineligible fallback fixture did not produce complete native model geometry: "
+                                    + "state=" + fixtureState
+                                    + ", quads=" + vanillaFixture.quads().size()
+                                    + ", vertices=" + vanillaFixture.vertices().size());
+                }
                 System.out.println("VOID FPS expected vanilla fallback classification passed: state="
-                        + fixtureState + ", reason=" + fixtureEligibility.rejectReason());
+                        + fixtureState + ", reason=" + fixtureEligibility.rejectReason()
+                        + ", nativeQuads=" + vanillaFixture.quads().size()
+                        + ", nativeVertices=" + vanillaFixture.vertices().size()
+                        + ", completeNativeGeometry=true");
             }
 
             RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
