@@ -401,9 +401,10 @@ final class NativeVanillaCaptureTest {
             long seed) {
         RenderSectionRegion region = createSectionRegion(level, pos, state);
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
-        verifyNativeSectionCompilerMeshCapture(level, pos, region);
+        Map<ChunkSectionLayer, MeshSnapshot> baselineMeshes =
+                verifyNativeSectionCompilerMeshCapture(level, pos, region);
         verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos), false);
-        verifyMixedEligibilitySectionTraversal(level, pos, state);
+        verifyMixedEligibilitySectionTraversal(level, pos, state, baselineMeshes);
         System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
                 + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
 
@@ -450,7 +451,7 @@ final class NativeVanillaCaptureTest {
      * section. This is a repeatability/baseline test only: SectionCompiler still uses
      * Minecraft's native ModelBlockRenderer and does not exercise a VOID replacement.
      */
-    private static void verifyNativeSectionCompilerMeshCapture(
+    private static Map<ChunkSectionLayer, MeshSnapshot> verifyNativeSectionCompilerMeshCapture(
             ClientLevel level, BlockPos fixturePos, RenderSectionRegion region) {
         Minecraft minecraft = Minecraft.getInstance();
         var modelManager = minecraft.getModelManager();
@@ -497,6 +498,7 @@ final class NativeVanillaCaptureTest {
                             .map(mesh -> mesh.metadata().elementDescriptors())
                             .toList()
                     + ", repeatedMeshBytesAndMetadataExact=true, candidateRendererExercised=false");
+            return Map.copyOf(first);
         } finally {
             buffers.close();
         }
@@ -581,7 +583,10 @@ final class NativeVanillaCaptureTest {
      * Every changed block is restored even if traversal fails.
      */
     private static void verifyMixedEligibilitySectionTraversal(
-            ClientLevel level, BlockPos origin, BlockState expectedOriginState) {
+            ClientLevel level,
+            BlockPos origin,
+            BlockState expectedOriginState,
+            Map<ChunkSectionLayer, MeshSnapshot> baselineMeshes) {
         SectionPos sectionPos = SectionPos.of(origin);
         int minX = sectionPos.x() << 4;
         int minY = sectionPos.y() << 4;
@@ -633,7 +638,27 @@ final class NativeVanillaCaptureTest {
             }
 
             RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
-            verifyNativeSectionCompilerMeshCapture(level, origin, mixedRegion);
+            Map<ChunkSectionLayer, MeshSnapshot> mixedMeshes =
+                    verifyNativeSectionCompilerMeshCapture(level, origin, mixedRegion);
+            int baselineVertices = baselineMeshes.values().stream()
+                    .mapToInt(mesh -> mesh.metadata().vertexCount()).sum();
+            int mixedVertices = mixedMeshes.values().stream()
+                    .mapToInt(mesh -> mesh.metadata().vertexCount()).sum();
+            if (mixedMeshes.size() <= baselineMeshes.size() || mixedVertices <= baselineVertices) {
+                throw new IllegalStateException(
+                        "Mixed fallback geometry did not expand vanilla section mesh output: "
+                                + "baselineLayers=" + baselineMeshes.keySet()
+                                + ", mixedLayers=" + mixedMeshes.keySet()
+                                + ", baselineVertices=" + baselineVertices
+                                + ", mixedVertices=" + mixedVertices);
+            }
+            System.out.println("VOID FPS mixed vanilla section mesh delta passed: "
+                    + "baselineLayers=" + baselineMeshes.size()
+                    + ", mixedLayers=" + mixedMeshes.size()
+                    + ", baselineVertices=" + baselineVertices
+                    + ", mixedVertices=" + mixedVertices
+                    + ", addedLayers=" + mixedMeshes.keySet().stream()
+                            .filter(layer -> !baselineMeshes.containsKey(layer)).toList());
             verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
             System.out.println("VOID FPS mixed-eligibility section fixture passed: "
                     + "partialAndNonCubicStates=" + fallbackStates.length
