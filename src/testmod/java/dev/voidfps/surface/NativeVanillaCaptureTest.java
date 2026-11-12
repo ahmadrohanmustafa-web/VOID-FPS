@@ -403,7 +403,7 @@ final class NativeVanillaCaptureTest {
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
         Map<ChunkSectionLayer, MeshSnapshot> baselineMeshes =
                 verifyNativeSectionCompilerMeshCapture(level, pos, region);
-        verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos), false, java.util.Set.of());
+        verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos), false, java.util.Map.of());
         verifyMixedEligibilitySectionTraversal(level, pos, state, baselineMeshes);
         System.out.println("VOID FPS real RenderSectionRegion fixture passed: sections=27"
                 + ", centerAndSixNeighboursExact=true, lightingSource=liveClientLevel");
@@ -516,7 +516,7 @@ final class NativeVanillaCaptureTest {
             RenderSectionRegion region,
             SectionPos sectionPos,
             boolean requireFallback,
-            java.util.Set<BlockPos> expectedFallbackPositions) {
+            Map<BlockPos, BlockState> expectedFallbackFixtures) {
         Minecraft minecraft = Minecraft.getInstance();
         int minX = sectionPos.x() << 4;
         int minY = sectionPos.y() << 4;
@@ -551,7 +551,14 @@ final class NativeVanillaCaptureTest {
                             SurfaceEligibility.analyzeNativeModel(state, snapshot);
                     if (!analysis.supported()) {
                         fallback++;
-                        if (expectedFallbackPositions.contains(blockPos)) {
+                        BlockState expectedFixtureState = expectedFallbackFixtures.get(blockPos);
+                        if (expectedFixtureState != null) {
+                            if (!state.equals(expectedFixtureState)) {
+                                throw new IllegalStateException(
+                                        "Section snapshot changed a deliberate fallback fixture state at "
+                                                + blockPos + ": expected=" + expectedFixtureState
+                                                + ", actual=" + state);
+                            }
                             observedExpectedFallbackPositions.add(blockPos);
                         }
                         continue;
@@ -575,8 +582,8 @@ final class NativeVanillaCaptureTest {
             throw new IllegalStateException(
                     "Mixed-eligibility section fixture did not exercise any vanilla fallback blocks");
         }
-        if (!observedExpectedFallbackPositions.containsAll(expectedFallbackPositions)) {
-            java.util.Set<BlockPos> missingFallbackPositions = new java.util.LinkedHashSet<>(expectedFallbackPositions);
+        if (!observedExpectedFallbackPositions.containsAll(expectedFallbackFixtures.keySet())) {
+            java.util.Set<BlockPos> missingFallbackPositions = new java.util.LinkedHashSet<>(expectedFallbackFixtures.keySet());
             missingFallbackPositions.removeAll(observedExpectedFallbackPositions);
             throw new IllegalStateException(
                     "Section shadow traversal did not classify every deliberate fallback fixture as vanilla: "
@@ -586,7 +593,7 @@ final class NativeVanillaCaptureTest {
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
                 + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
-                + ", expectedFallbackFixtures=" + expectedFallbackPositions.size()
+                + ", expectedFallbackFixtures=" + expectedFallbackFixtures.size()
                 + ", matchedExpectedFallbackFixtures=" + observedExpectedFallbackPositions.size()
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
                 + ", perBlockNativeParityExact=true"
@@ -618,7 +625,7 @@ final class NativeVanillaCaptureTest {
                 Blocks.OAK_STAIRS.defaultBlockState()
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
-        java.util.Set<BlockPos> expectedFallbackPositions = new java.util.LinkedHashSet<>();
+        Map<BlockPos, BlockState> expectedFallbackFixtures = new LinkedHashMap<>();
         previousStates.put(origin, level.getBlockState(origin));
         if (!previousStates.get(origin).equals(expectedOriginState)) {
             throw new IllegalStateException("Mixed section fixture origin changed before setup");
@@ -628,7 +635,7 @@ final class NativeVanillaCaptureTest {
             for (int index = 0; index < fallbackStates.length; index++) {
                 BlockPos fixture = new BlockPos(
                         minX + 2 + index * 2, minY + 1, minZ + 2);
-                expectedFallbackPositions.add(fixture);
+                expectedFallbackFixtures.put(fixture, fallbackStates[index]);
                 previousStates.put(fixture, level.getBlockState(fixture));
                 level.setBlock(fixture, fallbackStates[index], 3);
                 if (!level.getBlockState(fixture).equals(fallbackStates[index])) {
@@ -708,7 +715,7 @@ final class NativeVanillaCaptureTest {
                     + ", addedLayers=" + mixedMeshes.keySet().stream()
                             .filter(layer -> !baselineMeshes.containsKey(layer)).toList());
             int sectionFallbackCount = verifyCandidateSectionShadowTraversal(
-                    mixedRegion, sectionPos, true, expectedFallbackPositions);
+                    mixedRegion, sectionPos, true, expectedFallbackFixtures);
             if (sectionFallbackCount < fallbackStates.length) {
                 throw new IllegalStateException(
                         "Section traversal did not account for every deliberately placed fallback fixture: "
@@ -718,7 +725,7 @@ final class NativeVanillaCaptureTest {
             System.out.println("VOID FPS mixed-eligibility section fixture passed: "
                     + "deliberateFallbackFixtures=" + fallbackStates.length
                     + ", sectionFallbackBlocks=" + sectionFallbackCount
-                    + ", individuallyVerifiedFixtures=" + expectedFallbackPositions.size()
+                    + ", individuallyVerifiedFixtures=" + expectedFallbackFixtures.size()
                     + ", vanillaFallbackRequired=true");
         } finally {
             for (var entry : previousStates.entrySet()) {
