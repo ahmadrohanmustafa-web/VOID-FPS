@@ -512,7 +512,7 @@ final class NativeVanillaCaptureTest {
      * records against vanilla ModelBlockRenderer. Ineligible states remain vanilla
      * fallback; this does not replace SectionCompiler or create production MeshData.
      */
-    private static void verifyCandidateSectionShadowTraversal(
+    private static int verifyCandidateSectionShadowTraversal(
             RenderSectionRegion region, SectionPos sectionPos, boolean requireFallback) {
         Minecraft minecraft = Minecraft.getInstance();
         int minX = sectionPos.x() << 4;
@@ -574,6 +574,7 @@ final class NativeVanillaCaptureTest {
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
+        return fallback;
     }
 
     /**
@@ -687,9 +688,17 @@ final class NativeVanillaCaptureTest {
                     + ", baselineLayerContractsPreserved=true"
                     + ", addedLayers=" + mixedMeshes.keySet().stream()
                             .filter(layer -> !baselineMeshes.containsKey(layer)).toList());
-            verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
+            int sectionFallbackCount =
+                    verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
+            if (sectionFallbackCount < fallbackStates.length) {
+                throw new IllegalStateException(
+                        "Section traversal did not account for every deliberately placed fallback fixture: "
+                                + "expectedAtLeast=" + fallbackStates.length
+                                + ", actual=" + sectionFallbackCount);
+            }
             System.out.println("VOID FPS mixed-eligibility section fixture passed: "
-                    + "partialAndNonCubicStates=" + fallbackStates.length
+                    + "deliberateFallbackFixtures=" + fallbackStates.length
+                    + ", sectionFallbackBlocks=" + sectionFallbackCount
                     + ", vanillaFallbackRequired=true");
         } finally {
             for (var entry : previousStates.entrySet()) {
