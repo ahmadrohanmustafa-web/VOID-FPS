@@ -633,6 +633,7 @@ final class NativeVanillaCaptureTest {
             }
 
             RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
+            verifyNativeSectionCompilerMeshCapture(level, origin, mixedRegion);
             verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
             System.out.println("VOID FPS mixed-eligibility section fixture passed: "
                     + "partialAndNonCubicStates=" + fallbackStates.length
