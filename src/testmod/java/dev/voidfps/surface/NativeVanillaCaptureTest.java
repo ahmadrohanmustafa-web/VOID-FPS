@@ -652,11 +652,39 @@ final class NativeVanillaCaptureTest {
                                 + ", baselineVertices=" + baselineVertices
                                 + ", mixedVertices=" + mixedVertices);
             }
+            for (Map.Entry<ChunkSectionLayer, MeshSnapshot> baselineEntry : baselineMeshes.entrySet()) {
+                MeshSnapshot mixedMesh = mixedMeshes.get(baselineEntry.getKey());
+                if (mixedMesh == null) {
+                    throw new IllegalStateException(
+                            "Mixed fallback section lost an existing vanilla render layer: "
+                                    + baselineEntry.getKey());
+                }
+                MeshMetadata baselineMetadata = baselineEntry.getValue().metadata();
+                MeshMetadata mixedMetadata = mixedMesh.metadata();
+                if (baselineMetadata.vertexStride() != mixedMetadata.vertexStride()
+                        || !baselineMetadata.format().equals(mixedMetadata.format())
+                        || !baselineMetadata.elementDescriptors().equals(mixedMetadata.elementDescriptors())
+                        || !baselineMetadata.primitiveTopology().equals(mixedMetadata.primitiveTopology())) {
+                    throw new IllegalStateException(
+                            "Mixed fallback section changed the native vertex contract for "
+                                    + baselineEntry.getKey()
+                                    + ": baseline=" + baselineMetadata
+                                    + ", mixed=" + mixedMetadata);
+                }
+            }
+            MeshSnapshot translucentMesh = mixedMeshes.get(ChunkSectionLayer.TRANSLUCENT);
+            if (translucentMesh == null || translucentMesh.metadata().vertexCount() <= 0) {
+                throw new IllegalStateException(
+                        "Glass-pane fallback fixture did not produce a non-empty vanilla translucent mesh: "
+                                + mixedMeshes.keySet());
+            }
             System.out.println("VOID FPS mixed vanilla section mesh delta passed: "
                     + "baselineLayers=" + baselineMeshes.size()
                     + ", mixedLayers=" + mixedMeshes.size()
                     + ", baselineVertices=" + baselineVertices
                     + ", mixedVertices=" + mixedVertices
+                    + ", translucentVertices=" + translucentMesh.metadata().vertexCount()
+                    + ", baselineLayerContractsPreserved=true"
                     + ", addedLayers=" + mixedMeshes.keySet().stream()
                             .filter(layer -> !baselineMeshes.containsKey(layer)).toList());
             verifyCandidateSectionShadowTraversal(mixedRegion, sectionPos, true);
