@@ -611,6 +611,25 @@ final class NativeVanillaCaptureTest {
                             "Could not place mixed-eligibility fixture " + fallbackStates[index]
                                     + " at " + fixture);
                 }
+
+                BlockState fixtureState = level.getBlockState(fixture);
+                BlockStateModel fixtureModel = Minecraft.getInstance()
+                        .getModelManager().getBlockStateModelSet().get(fixtureState);
+                if (fixtureModel == null) {
+                    throw new IllegalStateException(
+                            "Mixed-eligibility fixture has no native block model: " + fixtureState);
+                }
+                NativeModelSnapshot.Snapshot fixtureSnapshot = NativeModelSnapshot.collect(
+                        fixtureModel, net.minecraft.util.RandomSource.create(fixtureState.getSeed(fixture)));
+                SurfaceEligibility.NativeGeometryAnalysis fixtureEligibility =
+                        SurfaceEligibility.analyzeNativeModel(fixtureState, fixtureSnapshot);
+                if (fixtureEligibility.supported()) {
+                    throw new IllegalStateException(
+                            "Mixed-eligibility fixture unexpectedly passed candidate geometry gate: "
+                                    + fixtureState);
+                }
+                System.out.println("VOID FPS expected vanilla fallback classification passed: state="
+                        + fixtureState + ", reason=" + fixtureEligibility.rejectReason());
             }
 
             RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
