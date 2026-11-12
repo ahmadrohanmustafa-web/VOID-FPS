@@ -687,11 +687,26 @@ final class NativeVanillaCaptureTest {
                                     + ", quads=" + vanillaFixture.quads().size()
                                     + ", vertices=" + vanillaFixture.vertices().size());
                 }
+
+                // Capture each deliberately unsupported model twice in the same world
+                // state. Fallback geometry must be stable, not merely non-empty.
+                Capture repeatedVanillaFixture = capture(
+                        level, fixture, fixtureState, fixtureModel, fixtureState.getSeed(fixture));
+                if (!vanillaFixture.quads().equals(repeatedVanillaFixture.quads())
+                        || !vanillaFixture.vertices().equals(repeatedVanillaFixture.vertices())) {
+                    throw new IllegalStateException(
+                            "Repeated native fallback fixture captures were not exact: state="
+                                    + fixtureState
+                                    + ", firstQuads=" + vanillaFixture.quads().size()
+                                    + ", secondQuads=" + repeatedVanillaFixture.quads().size()
+                                    + ", firstVertices=" + vanillaFixture.vertices().size()
+                                    + ", secondVertices=" + repeatedVanillaFixture.vertices().size());
+                }
                 System.out.println("VOID FPS expected vanilla fallback classification passed: state="
                         + fixtureState + ", reason=" + fixtureEligibility.rejectReason()
                         + ", nativeQuads=" + vanillaFixture.quads().size()
                         + ", nativeVertices=" + vanillaFixture.vertices().size()
-                        + ", completeNativeGeometry=true");
+                        + ", completeNativeGeometry=true, repeatedCaptureExact=true");
             }
 
             RenderSectionRegion mixedRegion = createSectionRegion(level, origin, expectedOriginState);
@@ -758,13 +773,22 @@ final class NativeVanillaCaptureTest {
                     + ", individuallyVerifiedFixtures=" + expectedFallbackFixtures.size()
                     + ", vanillaFallbackRequired=true");
         } finally {
+            int restoredStates = 0;
             for (var entry : previousStates.entrySet()) {
                 level.setBlock(entry.getKey(), entry.getValue(), 3);
                 if (!level.getBlockState(entry.getKey()).equals(entry.getValue())) {
                     throw new IllegalStateException(
                             "Could not restore mixed-eligibility fixture block at " + entry.getKey());
                 }
+                restoredStates++;
             }
+            if (restoredStates != previousStates.size()) {
+                throw new IllegalStateException(
+                        "Mixed-eligibility fixture restoration count mismatch: restored="
+                                + restoredStates + ", expected=" + previousStates.size());
+            }
+            System.out.println("VOID FPS mixed-eligibility fixture world restoration passed: "
+                    + "restoredStates=" + restoredStates + ", exactStateChecks=true");
         }
     }
 
