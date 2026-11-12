@@ -637,6 +637,19 @@ final class NativeVanillaCaptureTest {
                         minX + 2 + index * 2, minY + 1, minZ + 2);
                 expectedFallbackFixtures.put(fixture, fallbackStates[index]);
                 previousStates.put(fixture, level.getBlockState(fixture));
+                // Give every fallback model an unobstructed six-neighbour test space.
+                // Some models (notably leaves) can legitimately emit no visible faces
+                // when nearby opaque blocks cover all of their cull directions.
+                for (Direction direction : Direction.values()) {
+                    BlockPos neighbour = fixture.relative(direction);
+                    previousStates.putIfAbsent(neighbour, level.getBlockState(neighbour));
+                    level.setBlock(neighbour, Blocks.AIR.defaultBlockState(), 3);
+                    if (!level.getBlockState(neighbour).isAir()) {
+                        throw new IllegalStateException(
+                                "Could not clear fallback fixture neighbour " + neighbour
+                                        + " for " + fallbackStates[index]);
+                    }
+                }
                 level.setBlock(fixture, fallbackStates[index], 3);
                 if (!level.getBlockState(fixture).equals(fallbackStates[index])) {
                     throw new IllegalStateException(
