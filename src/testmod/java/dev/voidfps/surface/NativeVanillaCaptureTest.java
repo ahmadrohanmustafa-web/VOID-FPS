@@ -622,7 +622,11 @@ final class NativeVanillaCaptureTest {
                 Blocks.GLASS_PANE.defaultBlockState(),
                 Blocks.OAK_LEAVES.defaultBlockState(),
                 Blocks.TORCH.defaultBlockState(),
-                Blocks.OAK_STAIRS.defaultBlockState()
+                Blocks.OAK_STAIRS.defaultBlockState(),
+                Blocks.POPPY.defaultBlockState(),
+                Blocks.IRON_BARS.defaultBlockState(),
+                Blocks.OAK_TRAPDOOR.defaultBlockState(),
+                Blocks.CACTUS.defaultBlockState()
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
         Map<BlockPos, BlockState> expectedFallbackFixtures = new LinkedHashMap<>();
@@ -633,8 +637,12 @@ final class NativeVanillaCaptureTest {
 
         try {
             for (int index = 0; index < fallbackStates.length; index++) {
-                BlockPos fixture = new BlockPos(
-                        minX + 2 + index * 2, minY + 1, minZ + 2);
+                // Keep the original six fixtures on one row and add four
+                // independent shapes on a second row. Three-block spacing prevents
+                // neighbour clearing for one fixture from touching another fixture.
+                BlockPos fixture = index < 6
+                        ? new BlockPos(minX + 2 + index * 2, minY + 1, minZ + 2)
+                        : new BlockPos(minX + 2 + (index - 6) * 3, minY + 1, minZ + 6);
                 expectedFallbackFixtures.put(fixture, fallbackStates[index]);
                 previousStates.put(fixture, level.getBlockState(fixture));
                 // Give every fallback model an unobstructed six-neighbour test space.
