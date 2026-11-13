@@ -630,7 +630,7 @@ final class NativeVanillaCaptureTest {
                 Blocks.COBWEB.defaultBlockState(),
                 Blocks.LADDER.defaultBlockState(),
                 Blocks.LANTERN.defaultBlockState(),
-                Blocks.CHAIN.defaultBlockState(),
+                Blocks.COBBLESTONE_WALL.defaultBlockState(),
                 Blocks.BELL.defaultBlockState(),
                 Blocks.FLOWER_POT.defaultBlockState()
         };
