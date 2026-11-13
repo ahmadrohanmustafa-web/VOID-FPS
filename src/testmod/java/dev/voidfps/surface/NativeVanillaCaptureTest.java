@@ -726,22 +726,27 @@ final class NativeVanillaCaptureTest {
                             + ", blockRanges=" + candidateBlockVertexStarts.size()
                             + ", eligibleBlocks=" + eligible);
         }
-        int previousRangeEnd = -1;
+        int expectedRangeStart = 0;
         for (int index = 0; index < candidateBlockVertexStarts.size(); index++) {
             int rangeStart = candidateBlockVertexStarts.get(index);
             int rangeEnd = index + 1 < candidateBlockVertexStarts.size()
                     ? candidateBlockVertexStarts.get(index + 1)
                     : comparedVertexRecords;
             int rangeSize = rangeEnd - rangeStart;
-            if (rangeStart <= previousRangeEnd || rangeStart < 0
-                    || rangeEnd <= rangeStart || rangeEnd > comparedVertexRecords
-                    || rangeSize % 4 != 0) {
+            if (rangeStart != expectedRangeStart || rangeEnd <= rangeStart
+                    || rangeEnd > comparedVertexRecords || rangeSize % 4 != 0) {
                 throw new IllegalStateException(
-                        "Candidate eligible-block range is invalid: index=" + index
+                        "Candidate eligible-block range is invalid or non-contiguous: index=" + index
+                                + ", expectedStart=" + expectedRangeStart
                                 + ", start=" + rangeStart + ", end=" + rangeEnd
                                 + ", vertices=" + comparedVertexRecords);
             }
-            previousRangeEnd = rangeEnd;
+            expectedRangeStart = rangeEnd;
+        }
+        if (expectedRangeStart != comparedVertexRecords) {
+            throw new IllegalStateException(
+                    "Candidate eligible-block ranges do not cover the complete stream: "
+                            + "covered=" + expectedRangeStart + ", vertices=" + comparedVertexRecords);
         }
 
         MeshSnapshot vanillaEligibleSubstreamMesh = buildVertexStreamMeshData(
