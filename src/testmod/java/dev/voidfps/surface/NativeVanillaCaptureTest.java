@@ -480,13 +480,7 @@ final class NativeVanillaCaptureTest {
             for (ChunkSectionLayer layer : first.keySet()) {
                 MeshSnapshot a = first.get(layer);
                 MeshSnapshot b = second.get(layer);
-                if (!a.metadata().equals(b.metadata()) || !Arrays.equals(a.bytes(), b.bytes())) {
-                    throw new IllegalStateException(
-                            "Repeated vanilla section mesh metadata/bytes differ for layer " + layer
-                                    + ": first=" + a.metadata() + ", second=" + b.metadata()
-                                    + ", firstBytes=" + a.bytes().length
-                                    + ", secondBytes=" + b.bytes().length);
-                }
+                assertMeshSnapshotsEquivalent("repeated vanilla section compile", layer, a, b);
             }
             int totalBytes = first.values().stream().mapToInt(mesh -> mesh.bytes().length).sum();
             int totalVertices = first.values().stream().mapToInt(mesh -> mesh.metadata().vertexCount()).sum();
@@ -917,6 +911,50 @@ final class NativeVanillaCaptureTest {
             return snapshot;
         } finally {
             results.release();
+        }
+    }
+
+
+    /**
+     * Shared byte-exact mesh comparator. Its first-difference offset is also the
+     * diagnostic used by a future candidate-section parity test; metadata is
+     * checked before bytes so layout mismatches are not hidden by equal lengths.
+     */
+    private static void assertMeshSnapshotsEquivalent(
+            String scenario,
+            ChunkSectionLayer layer,
+            MeshSnapshot expected,
+            MeshSnapshot actual) {
+        if (expected == null || actual == null) {
+            throw new IllegalStateException(scenario + " has a missing mesh for layer " + layer
+                    + ": expected=" + (expected == null ? "null" : "present")
+                    + ", actual=" + (actual == null ? "null" : "present"));
+        }
+        if (!expected.metadata().equals(actual.metadata())) {
+            throw new IllegalStateException(scenario + " metadata differs for layer " + layer
+                    + ": expected=" + expected.metadata() + ", actual=" + actual.metadata());
+        }
+        byte[] expectedBytes = expected.bytes();
+        byte[] actualBytes = actual.bytes();
+        if (expectedBytes == null || actualBytes == null) {
+            throw new IllegalStateException(scenario + " has a missing vertex buffer for layer " + layer);
+        }
+        if (!Arrays.equals(expectedBytes, actualBytes)) {
+            int commonLength = Math.min(expectedBytes.length, actualBytes.length);
+            int firstDifference = 0;
+            while (firstDifference < commonLength
+                    && expectedBytes[firstDifference] == actualBytes[firstDifference]) {
+                firstDifference++;
+            }
+            String byteDetail = firstDifference < commonLength
+                    ? "expected=0x" + String.format("%02X", expectedBytes[firstDifference] & 0xFF)
+                            + ", actual=0x" + String.format("%02X", actualBytes[firstDifference] & 0xFF)
+                    : "one buffer ended before the other";
+            throw new IllegalStateException(scenario + " vertex bytes differ for layer " + layer
+                    + ": firstDifferenceOffset=" + firstDifference + ", " + byteDetail
+                    + ", expectedBytes=" + expectedBytes.length
+                    + ", actualBytes=" + actualBytes.length
+                    + ", metadata=" + expected.metadata());
         }
     }
 
