@@ -128,6 +128,19 @@ public final class SelfTest {
         check("non-solid layer rejected",
                 !SurfaceEligibility.analyze(new ModelInfo(true, false, false, true, cubeQuads("s"))).supported());
         check("empty rejected", !SurfaceEligibility.analyze(cube(List.of())).supported());
+        check("missing model info rejected", !SurfaceEligibility.analyze(null).supported());
+        check("missing quad list rejected",
+                !SurfaceEligibility.analyze(new ModelInfo(true, false, true, true, null)).supported());
+        check("null quad rejected",
+                !SurfaceEligibility.analyze(cube(java.util.Arrays.asList((BakedQuadData) null))).supported());
+        List<BakedQuadData> missingLightFace = cubeQuads("s");
+        BakedQuadData originalMissingLightFace = missingLightFace.get(0);
+        missingLightFace.set(0, new BakedQuadData(null, originalMissingLightFace.cullFace(),
+                originalMissingLightFace.tintIndex(), originalMissingLightFace.shade(),
+                originalMissingLightFace.positions(), originalMissingLightFace.uvs(),
+                originalMissingLightFace.sprite()));
+        check("missing light face rejected",
+                !SurfaceEligibility.analyze(cube(missingLightFace)).supported());
 
         List<BakedQuadData> tinted = cubeQuads("g");
         tinted.set(1, with(tinted.get(1), Face.UP, Face.UP, 0, null));
