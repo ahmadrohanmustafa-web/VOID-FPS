@@ -92,6 +92,8 @@ public final class SurfaceEligibility {
             if (seen[f.ordinal()]) return reject("more than one quad on face " + f);
             String geometry = checkUnitFaceSquare(q, f);
             if (geometry != null) return reject(geometry);
+            String uv = checkFiniteUvs(q);
+            if (uv != null) return reject(uv);
             seen[f.ordinal()] = true;
             plan.set(f, q);
         }
@@ -116,6 +118,15 @@ public final class SurfaceEligibility {
             int idx = (ca > 0.5f ? 1 : 0) | (cb > 0.5f ? 2 : 0);
             if (corner[idx]) return "degenerate quad (repeated corner)";
             corner[idx] = true;
+        }
+        return null;
+    }
+
+    /** UV coordinates may legitimately extend outside 0..1, but must always be finite. */
+    private static String checkFiniteUvs(BakedQuadData q) {
+        float[] uv = q.uvs();
+        for (int i = 0; i < uv.length; i++) {
+            if (!Float.isFinite(uv[i])) return "non-finite UV coordinate at component " + i;
         }
         return null;
     }
