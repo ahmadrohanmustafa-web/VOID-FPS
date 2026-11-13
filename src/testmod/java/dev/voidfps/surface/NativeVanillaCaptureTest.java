@@ -44,6 +44,7 @@ final class NativeVanillaCaptureTest {
     }
 
     static void verifyStone(ClientLevel level, BlockPos pos) {
+        verifyMeshComparatorDiagnostics();
         BlockState state = level.getBlockState(pos);
         if (!state.is(Blocks.STONE)) {
             throw new IllegalArgumentException("Capture fixture is not stone at " + pos + ": " + state);
@@ -914,6 +915,41 @@ final class NativeVanillaCaptureTest {
         }
     }
 
+
+    /** Exercises exact-equality and first-byte-difference diagnostics without Minecraft rendering. */
+    private static void verifyMeshComparatorDiagnostics() {
+        MeshMetadata metadata = new MeshMetadata(1, 1, "fixture-format", "fixture-element", 0, "fixture-topology");
+        MeshSnapshot expected = new MeshSnapshot(metadata, new byte[]{0x11, 0x22, 0x33});
+        MeshSnapshot identical = new MeshSnapshot(metadata, new byte[]{0x11, 0x22, 0x33});
+        assertMeshSnapshotsEquivalent("comparator self-test", ChunkSectionLayer.SOLID, expected, identical);
+
+        MeshSnapshot changed = new MeshSnapshot(metadata, new byte[]{0x11, 0x44, 0x33});
+        try {
+            assertMeshSnapshotsEquivalent("comparator mismatch self-test",
+                    ChunkSectionLayer.SOLID, expected, changed);
+            throw new IllegalStateException("Mesh comparator accepted a changed vertex byte");
+        } catch (IllegalStateException mismatch) {
+            if (!mismatch.getMessage().contains("firstDifferenceOffset=1")
+                    || !mismatch.getMessage().contains("expected=0x22")
+                    || !mismatch.getMessage().contains("actual=0x44")) {
+                throw new IllegalStateException(
+                        "Mesh comparator did not report the exact first differing byte", mismatch);
+            }
+        }
+
+        MeshMetadata changedMetadata = new MeshMetadata(2, 1, "fixture-format",
+                "fixture-element", 0, "fixture-topology");
+        try {
+            assertMeshSnapshotsEquivalent("comparator metadata self-test",
+                    ChunkSectionLayer.SOLID, expected, new MeshSnapshot(changedMetadata, new byte[]{0x11, 0x22, 0x33}));
+            throw new IllegalStateException("Mesh comparator accepted changed draw metadata");
+        } catch (IllegalStateException mismatch) {
+            if (!mismatch.getMessage().contains("metadata differs")) {
+                throw new IllegalStateException("Mesh comparator did not identify metadata mismatch", mismatch);
+            }
+        }
+        System.out.println("VOID FPS section mesh comparator diagnostics passed: exactBytes=true, firstDifferenceOffset=true, metadataMismatch=true");
+    }
 
     /**
      * Shared byte-exact mesh comparator. Its first-difference offset is also the
