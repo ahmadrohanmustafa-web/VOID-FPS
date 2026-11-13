@@ -10,13 +10,15 @@ VOID FPS is a client-side Minecraft 26.3 investigation project. The shipped mod 
 - The test harness invokes Minecraft's real `ModelBlockRenderer` path for live-world fixtures and captures ordered native vertex records. Repeated vanilla captures are checked for exact equality.
 - The harness compares the candidate's selected native quads and per-block packed vertex output against vanilla for supported full-cube fixtures, neighbour-culling cases, renderer AO/culling flag combinations, and several deterministic model seeds.
 - A separate section-region test captures the real vanilla `SectionCompiler` mesh and checks its vertex format, stride, byte contents, metadata, and repeat-capture stability. This is a vanilla section-mesh capture, not a candidate-generated replacement mesh.
+- Candidate and vanilla block captures are also written through Minecraft's native `BufferBuilder` into real `MeshData` using the SOLID layer's vertex format; draw metadata and every vertex byte are compared exactly.
+- The section shadow traversal concatenates all eligible-block vertex records in section traversal order, validates contiguous per-block quad ranges, writes the complete eligible-only substream through `BufferBuilder`, and compares the resulting vanilla/candidate `MeshData` exactly. Unsupported blocks remain classified for vanilla fallback and are not included in this candidate substream.
 - Native vertex parity comparison rejects null captures, null records, invalid tolerances, non-finite vertex fields, count mismatches, ordering changes, and packed integer-field differences.
 
 ## Still required before a production optimization
 
-1. **Candidate section mesh generation.** Implement a test-only candidate path that writes supported block geometry into the actual Minecraft 26.3 section output format, without registering a production mixin.
-2. **Whole-section parity.** Compare vanilla and candidate section meshes using the same world, block states, model seeds, section origin, layer routing, lighting/AO settings, and neighbours. Compare vertex bytes and all relevant mesh metadata; unsupported blocks must remain vanilla-only with no duplicate output.
-3. **Broader fallback proof.** Confirm partial shapes, internal geometry, unculled/multi-quad faces, tint, animated/emissive materials, non-solid layers, block entities, offsets, and resource-pack overrides are rejected before candidate output.
+1. **Complete candidate section compilation.** Extend the eligible-only `MeshData` proof into a section compiler that also routes unsupported blocks to vanilla exactly once, handles every render layer and fluid path, and preserves native ordering/metadata.
+2. **Whole-section parity.** Compare the complete vanilla and candidate section meshes using the same world, block states, model seeds, section origin, layer routing, lighting/AO settings, and neighbours. Compare vertex bytes and all relevant mesh metadata; unsupported blocks must remain vanilla-only with no duplicate or missing output.
+3. **Broader fallback proof.** Confirm partial shapes, internal geometry, unculled/multi-quad faces, tint, animated/emissive materials, non-solid layers, block entities, offsets, fluids, and resource-pack overrides are rejected or routed to vanilla before candidate output.
 4. **Visual and performance validation.** Check visual equivalence, then benchmark repeatably on the same scene and hardware. A candidate that is not measurably faster must not ship as an optimization.
 5. **Only after all gates pass:** consider a narrowly scoped, verified production integration point. Never enable an unverified renderer replacement just to make the mod appear active.
 
