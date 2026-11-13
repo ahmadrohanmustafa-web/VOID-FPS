@@ -77,6 +77,8 @@ public final class SurfaceEligibility {
     }
 
     public static Analysis analyze(ModelInfo info) {
+        if (info == null) return reject("model information is missing");
+        if (info.quads() == null) return reject("model quad list is missing");
         if (!info.opaqueFullCube()) return reject("not an opaque full cube");
         if (info.hasBlockEntityRenderer()) return reject("block entity / custom renderer");
         if (!info.solidRenderLayer()) return reject("not in the solid render layer");
@@ -85,6 +87,8 @@ public final class SurfaceEligibility {
         SurfacePlan plan = new SurfacePlan(info.ambientOcclusionAllowed());
         boolean[] seen = new boolean[6];
         for (BakedQuadData q : info.quads()) {
+            if (q == null) return reject("model contains a missing quad");
+            if (q.lightFace() == null) return reject("quad without a light face");
             if (q.tintIndex() >= 0) return reject("tinted quad (milestone 1 excludes tint)");
             if (q.cullFace() == null) return reject("quad without cull face");
             if (q.lightFace() != q.cullFace()) return reject("light face differs from cull face");
