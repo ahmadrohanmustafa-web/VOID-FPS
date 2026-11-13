@@ -492,6 +492,22 @@ final class NativeVanillaCaptureTest {
 
     private static MeshSnapshot buildBlockMeshData(
             Capture capture, SectionPos sectionPos, ChunkSectionLayer layer) {
+        return buildVertexStreamMeshData(capture.vertices(), sectionPos, layer);
+    }
+
+    /**
+     * Uses Minecraft's native BufferBuilder to create MeshData from an ordered vertex stream.
+     * Accepts both one-block captures and the concatenated eligible-block section substream.
+     */
+    private static MeshSnapshot buildVertexStreamMeshData(
+            List<NativeVertexRecord> vertices, SectionPos sectionPos, ChunkSectionLayer layer) {
+        if (vertices == null || vertices.isEmpty()) {
+            throw new IllegalArgumentException("Cannot build section MeshData from an empty vertex stream");
+        }
+        if (vertices.size() % 4 != 0) {
+            throw new IllegalArgumentException(
+                    "QUADS vertex stream is not divisible by four: " + vertices.size());
+        }
         SectionBufferBuilderPack buffers = new SectionBufferBuilderPack();
         MeshData mesh = null;
         try {
@@ -500,7 +516,10 @@ final class NativeVanillaCaptureTest {
             float sectionX = (sectionPos.x() << 4);
             float sectionY = (sectionPos.y() << 4);
             float sectionZ = (sectionPos.z() << 4);
-            for (NativeVertexRecord vertex : capture.vertices()) {
+            for (NativeVertexRecord vertex : vertices) {
+                if (vertex == null) {
+                    throw new IllegalArgumentException("Vertex stream contains a null record");
+                }
                 builder.addVertex(
                         vertex.x() - sectionX,
                         vertex.y() - sectionY,
@@ -527,12 +546,14 @@ final class NativeVanillaCaptureTest {
                     drawState.indexCount(),
                     drawState.primitiveTopology().toString());
             long expectedBytes = (long) metadata.vertexCount() * metadata.vertexStride();
-            if (metadata.vertexCount() != capture.vertices().size()
-                    || metadata.vertexStride() <= 0 || bytes.length != expectedBytes) {
+            if (metadata.vertexCount() != vertices.size()
+                    || metadata.vertexStride() <= 0 || bytes.length != expectedBytes
+                    || drawState.primitiveTopology() != PrimitiveTopology.QUADS) {
                 throw new IllegalStateException(
-                        "Candidate block BufferBuilder returned invalid MeshData: metadata="
+                        "Candidate BufferBuilder returned invalid MeshData: metadata="
                                 + metadata + ", bytes=" + bytes.length
-                                + ", expectedBytes=" + expectedBytes);
+                                + ", expectedBytes=" + expectedBytes
+                                + ", inputVertices=" + vertices.size());
             }
             return new MeshSnapshot(metadata, bytes);
         } finally {
@@ -699,11 +720,44 @@ final class NativeVanillaCaptureTest {
                 || sectionCandidateVertices.size() != comparedVertexRecords
                 || candidateBlockVertexStarts.size() != eligible) {
             throw new IllegalStateException(
-                    "Candidate whole-section stream accounting mismatch: vanillaVertices="
+                    "Candidate eligible-section stream accounting mismatch: vanillaVertices="
                             + sectionVanillaVertices.size() + ", candidateVertices="
                             + sectionCandidateVertices.size() + ", compared=" + comparedVertexRecords
                             + ", blockRanges=" + candidateBlockVertexStarts.size()
                             + ", eligibleBlocks=" + eligible);
+        }
+        int previousRangeEnd = -1;
+        for (int index = 0; index < candidateBlockVertexStarts.size(); index++) {
+            int rangeStart = candidateBlockVertexStarts.get(index);
+            int rangeEnd = index + 1 < candidateBlockVertexStarts.size()
+                    ? candidateBlockVertexStarts.get(index + 1)
+                    : comparedVertexRecords;
+            int rangeSize = rangeEnd - rangeStart;
+            if (rangeStart <= previousRangeEnd || rangeStart < 0
+                    || rangeEnd <= rangeStart || rangeEnd > comparedVertexRecords
+                    || rangeSize % 4 != 0) {
+                throw new IllegalStateException(
+                        "Candidate eligible-block range is invalid: index=" + index
+                                + ", start=" + rangeStart + ", end=" + rangeEnd
+                                + ", vertices=" + comparedVertexRecords);
+            }
+            previousRangeEnd = rangeEnd;
+        }
+
+        MeshSnapshot vanillaEligibleSubstreamMesh = buildVertexStreamMeshData(
+                sectionVanillaVertices, sectionPos, ChunkSectionLayer.SOLID);
+        MeshSnapshot candidateEligibleSubstreamMesh = buildVertexStreamMeshData(
+                sectionCandidateVertices, sectionPos, ChunkSectionLayer.SOLID);
+        assertMeshSnapshotsEquivalent(
+                "candidate eligible-block section-substream MeshData",
+                ChunkSectionLayer.SOLID,
+                vanillaEligibleSubstreamMesh,
+                candidateEligibleSubstreamMesh);
+        if (candidateEligibleSubstreamMesh.metadata().vertexCount() != comparedVertexRecords) {
+            throw new IllegalStateException(
+                    "Candidate eligible-block section MeshData lost vertex records: expected="
+                            + comparedVertexRecords + ", actual="
+                            + candidateEligibleSubstreamMesh.metadata().vertexCount());
         }
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
@@ -711,8 +765,9 @@ final class NativeVanillaCaptureTest {
                 + ", expectedFallbackFixtures=" + expectedFallbackFixtures.size()
                 + ", matchedExpectedFallbackFixtures=" + observedExpectedFallbackPositions.size()
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
-                + ", candidateBlockRanges=" + candidateBlockVertexStarts.size()
+                + ", candidateBlockRangesValidated=" + candidateBlockVertexStarts.size()
                 + ", eligibleBlockSectionSubstreamExact=true"
+                + ", eligibleBlockSectionMeshDataExact=true"
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
         return fallback;
