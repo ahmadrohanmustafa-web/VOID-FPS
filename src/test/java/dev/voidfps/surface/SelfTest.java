@@ -324,6 +324,13 @@ public final class SelfTest {
     }
 
 
+    static NativeVertexRecord nativeRecordWithFloat(int field, float value) {
+        float[] values = {1, 2, 3, 0.25f, 0.75f, 0, 1, 0};
+        values[field] = value;
+        return new NativeVertexRecord(values[0], values[1], values[2], 0xFFFFFFFF,
+                values[3], values[4], 4, 5, values[5], values[6], values[7]);
+    }
+
     static void nativeVertexComparison() {
         NativeVertexRecord a = new NativeVertexRecord(
                 1, 2, 3, 0xFFFFFFFF, 0.25f, 0.75f, 4, 5, 0, 1, 0);
@@ -359,6 +366,16 @@ public final class SelfTest {
                         List.of(new NativeVertexRecord(Float.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
                         List.of(new NativeVertexRecord(Float.NaN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
                         0).matches());
+        String[] floatFields = {"x", "y", "z", "u", "v", "normalX", "normalY", "normalZ"};
+        for (int field = 0; field < floatFields.length; field++) {
+            NativeVertexRecord valid = nativeRecordWithFloat(field, 0.5f);
+            NativeVertexRecord nan = nativeRecordWithFloat(field, Float.NaN);
+            NativeVertexRecord infinity = nativeRecordWithFloat(field, Float.POSITIVE_INFINITY);
+            check("native vertex NaN rejected in " + floatFields[field],
+                    !NativeVertexParity.compare(List.of(nan), List.of(valid), 0).matches());
+            check("native vertex infinity rejected in " + floatFields[field],
+                    !NativeVertexParity.compare(List.of(valid), List.of(infinity), 0).matches());
+        }
     }
 
 
