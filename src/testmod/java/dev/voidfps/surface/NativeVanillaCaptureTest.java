@@ -1,6 +1,8 @@
 package dev.voidfps.surface;
 
 import com.mojang.blaze3d.vertex.QuadInstance;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
@@ -402,6 +404,7 @@ final class NativeVanillaCaptureTest {
             long seed) {
         RenderSectionRegion region = createSectionRegion(level, pos, state);
         verifyCandidateVertexOutput(region, pos, state, model, seed, "section-region");
+        verifyCandidateBlockMeshDataParity(region, pos, state, model, seed);
         Map<ChunkSectionLayer, MeshSnapshot> baselineMeshes =
                 verifyNativeSectionCompilerMeshCapture(level, pos, region);
         verifyCandidateSectionShadowTraversal(region, SectionPos.of(pos), false, java.util.Map.of());
@@ -444,6 +447,99 @@ final class NativeVanillaCaptureTest {
                             "Could not restore section-region neighbour at " + neighbourPos);
                 }
             }
+        }
+    }
+
+    /**
+     * Writes both vanilla and candidate block captures through Minecraft's real
+     * BufferBuilder into SOLID-layer MeshData. Positions are translated to section-local
+     * coordinates exactly as section meshes require, then draw metadata and every vertex
+     * byte are compared. This is a real candidate MeshData write, but remains block-scoped:
+     * it does not yet replace SectionCompiler or prove whole-section parity.
+     */
+    private static void verifyCandidateBlockMeshDataParity(
+            BlockAndTintGetter level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed) {
+        BlockModelLighter.enableCaching();
+        try {
+            Capture vanilla = capture(level, pos, state, model, seed, true, true);
+            Capture candidate = captureCandidate(level, pos, state, model, seed, true, true);
+            NativeVertexParity.Result parity = NativeVertexParity.compare(
+                    vanilla.vertices(), candidate.vertices(), 0.0f);
+            if (!parity.matches() || !vanilla.quads().equals(candidate.quads())) {
+                throw new IllegalStateException(
+                        "Candidate block mesh input differs from vanilla before BufferBuilder: "
+                                + (parity.matches() ? "quad metadata/order mismatch" : parity.difference()));
+            }
+
+            SectionPos sectionPos = SectionPos.of(pos);
+            MeshSnapshot vanillaMesh = buildBlockMeshData(vanilla, sectionPos, ChunkSectionLayer.SOLID);
+            MeshSnapshot candidateMesh = buildBlockMeshData(candidate, sectionPos, ChunkSectionLayer.SOLID);
+            assertMeshSnapshotsEquivalent(
+                    "candidate SOLID block MeshData", ChunkSectionLayer.SOLID,
+                    vanillaMesh, candidateMesh);
+            System.out.println("VOID FPS candidate native BufferBuilder block MeshData parity passed: "
+                    + "section=" + sectionPos + ", vertices=" + candidateMesh.metadata().vertexCount()
+                    + ", stride=" + candidateMesh.metadata().vertexStride()
+                    + ", exactBytes=true, scope=single-eligible-block");
+        } finally {
+            BlockModelLighter.clearCache();
+        }
+    }
+
+    private static MeshSnapshot buildBlockMeshData(
+            Capture capture, SectionPos sectionPos, ChunkSectionLayer layer) {
+        SectionBufferBuilderPack buffers = new SectionBufferBuilderPack();
+        MeshData mesh = null;
+        try {
+            BufferBuilder builder = new BufferBuilder(
+                    buffers.buffer(layer), PrimitiveTopology.QUADS, layer.vertexFormat());
+            float sectionX = (sectionPos.x() << 4);
+            float sectionY = (sectionPos.y() << 4);
+            float sectionZ = (sectionPos.z() << 4);
+            for (NativeVertexRecord vertex : capture.vertices()) {
+                builder.addVertex(
+                        vertex.x() - sectionX,
+                        vertex.y() - sectionY,
+                        vertex.z() - sectionZ,
+                        vertex.color(),
+                        vertex.u(),
+                        vertex.v(),
+                        vertex.overlay(),
+                        vertex.light(),
+                        vertex.normalX(),
+                        vertex.normalY(),
+                        vertex.normalZ());
+            }
+            mesh = builder.buildOrThrow();
+            MeshData.DrawState drawState = mesh.drawState();
+            ByteBuffer source = mesh.vertexBuffer().duplicate();
+            byte[] bytes = new byte[source.remaining()];
+            source.get(bytes);
+            MeshMetadata metadata = new MeshMetadata(
+                    drawState.vertexCount(),
+                    drawState.format().getVertexSize(),
+                    drawState.format().toString(),
+                    drawState.format().getElements().toString(),
+                    drawState.indexCount(),
+                    drawState.primitiveTopology().toString());
+            long expectedBytes = (long) metadata.vertexCount() * metadata.vertexStride();
+            if (metadata.vertexCount() != capture.vertices().size()
+                    || metadata.vertexStride() <= 0 || bytes.length != expectedBytes) {
+                throw new IllegalStateException(
+                        "Candidate block BufferBuilder returned invalid MeshData: metadata="
+                                + metadata + ", bytes=" + bytes.length
+                                + ", expectedBytes=" + expectedBytes);
+            }
+            return new MeshSnapshot(metadata, bytes);
+        } finally {
+            if (mesh != null) {
+                mesh.close();
+            }
+            buffers.close();
         }
     }
 
