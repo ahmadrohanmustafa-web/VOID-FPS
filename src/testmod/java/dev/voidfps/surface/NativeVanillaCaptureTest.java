@@ -596,7 +596,7 @@ final class NativeVanillaCaptureTest {
                 sectionVanillaVertices, sectionCandidateVertices, 0.0f);
         if (!sectionParity.matches()) {
             throw new IllegalStateException(
-                    "VOID candidate whole-section ordered vertex stream differs from vanilla: "
+                    "VOID candidate eligible-block section substream differs from vanilla: "
                             + sectionParity.difference());
         }
         if (sectionVanillaVertices.size() != comparedVertexRecords
@@ -616,7 +616,7 @@ final class NativeVanillaCaptureTest {
                 + ", matchedExpectedFallbackFixtures=" + observedExpectedFallbackPositions.size()
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
                 + ", candidateBlockRanges=" + candidateBlockVertexStarts.size()
-                + ", wholeSectionOrderedVertexStreamExact=true"
+                + ", eligibleBlockSectionSubstreamExact=true"
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
         return fallback;
