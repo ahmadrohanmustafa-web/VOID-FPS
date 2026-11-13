@@ -34,7 +34,12 @@ public final class NativeVertexParity {
         for (int i = 0; i < vanilla.size(); i++) {
             NativeVertexRecord expected = vanilla.get(i);
             NativeVertexRecord actual = candidate.get(i);
-            if (expected == null || !expected.matches(actual, floatTolerance)) {
+            if (expected == null || actual == null) {
+                return new Result(false, i, "vertex " + i + " is missing: vanilla="
+                        + (expected == null ? "null" : "present") + ", candidate="
+                        + (actual == null ? "null" : "present"));
+            }
+            if (!expected.matches(actual, floatTolerance)) {
                 return new Result(false, i,
                         "vertex " + i + " differs: vanilla=" + expected + ", candidate=" + actual);
             }
