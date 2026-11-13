@@ -521,6 +521,9 @@ final class NativeVanillaCaptureTest {
         int fallback = 0;
         java.util.Set<BlockPos> observedExpectedFallbackPositions = new java.util.LinkedHashSet<>();
         int comparedVertexRecords = 0;
+        List<NativeVertexRecord> sectionVanillaVertices = new ArrayList<>();
+        List<NativeVertexRecord> sectionCandidateVertices = new ArrayList<>();
+        List<Integer> candidateBlockVertexStarts = new ArrayList<>();
 
         for (int y = minY; y < minY + 16; y++) {
             for (int z = minZ; z < minZ + 16; z++) {
@@ -559,9 +562,13 @@ final class NativeVanillaCaptureTest {
                         continue;
                     }
 
-                    comparedVertexRecords += verifyCandidateVertexOutput(
+                    Capture verified = captureVerifiedCandidateOutput(
                             region, blockPos, state, model, seed,
                             "section-shadow-" + x + "-" + y + "-" + z);
+                    candidateBlockVertexStarts.add(sectionCandidateVertices.size());
+                    sectionVanillaVertices.addAll(verified.vanillaVertices());
+                    sectionCandidateVertices.addAll(verified.candidateVertices());
+                    comparedVertexRecords += verified.candidateVertices().size();
                     eligible++;
                 }
             }
@@ -585,12 +592,31 @@ final class NativeVanillaCaptureTest {
                             + "missingPositions=" + missingFallbackPositions
                             + ", observed=" + observedExpectedFallbackPositions);
         }
+        NativeVertexParity.Result sectionParity = NativeVertexParity.compare(
+                sectionVanillaVertices, sectionCandidateVertices, 0.0f);
+        if (!sectionParity.matches()) {
+            throw new IllegalStateException(
+                    "VOID candidate whole-section ordered vertex stream differs from vanilla: "
+                            + sectionParity.difference());
+        }
+        if (sectionVanillaVertices.size() != comparedVertexRecords
+                || sectionCandidateVertices.size() != comparedVertexRecords
+                || candidateBlockVertexStarts.size() != eligible) {
+            throw new IllegalStateException(
+                    "Candidate whole-section stream accounting mismatch: vanillaVertices="
+                            + sectionVanillaVertices.size() + ", candidateVertices="
+                            + sectionCandidateVertices.size() + ", compared=" + comparedVertexRecords
+                            + ", blockRanges=" + candidateBlockVertexStarts.size()
+                            + ", eligibleBlocks=" + eligible);
+        }
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
                 + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
                 + ", expectedFallbackFixtures=" + expectedFallbackFixtures.size()
                 + ", matchedExpectedFallbackFixtures=" + observedExpectedFallbackPositions.size()
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
+                + ", candidateBlockRanges=" + candidateBlockVertexStarts.size()
+                + ", wholeSectionOrderedVertexStreamExact=true"
                 + ", perBlockNativeParityExact=true"
                 + ", fullSectionMeshReplacement=false");
         return fallback;
@@ -1104,6 +1130,38 @@ final class NativeVanillaCaptureTest {
     }
 
     /**
+     * Captures both native paths for one eligible block and returns their ordered vertex
+     * records so the section traversal can validate the concatenated section stream too.
+     */
+    private static VerifiedBlockCapture captureVerifiedCandidateOutput(
+            BlockAndTintGetter level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model,
+            long seed,
+            String scenario) {
+        BlockModelLighter.enableCaching();
+        try {
+            Capture vanilla = capture(level, pos, state, model, seed, true, true);
+            Capture candidate = captureCandidate(level, pos, state, model, seed, true, true);
+            NativeVertexParity.Result parity = NativeVertexParity.compare(
+                    vanilla.vertices(), candidate.vertices(), 0.0f);
+            if (!parity.matches()) {
+                throw new IllegalStateException(
+                        "VOID candidate vertex-output parity differs from vanilla for " + scenario
+                                + ": " + parity.difference());
+            }
+            if (!vanilla.quads().equals(candidate.quads())) {
+                throw new IllegalStateException(
+                        "VOID candidate quad metadata/order differs from vanilla for " + scenario);
+            }
+            return new VerifiedBlockCapture(vanilla.vertices(), candidate.vertices());
+        } finally {
+            BlockModelLighter.clearCache();
+        }
+    }
+
+    /**
      * Independent test-only candidate path. It selects the same seeded native model parts,
      * performs the narrow full-cube face test, asks Minecraft's BlockModelLighter to prepare
      * AO or flat data, and forwards the original baked quads to the native packed-vertex path.
@@ -1220,5 +1278,10 @@ final class NativeVanillaCaptureTest {
     }
 
     private record Capture(List<QuadSignature> quads, List<NativeVertexRecord> vertices) {
+    }
+
+    private record VerifiedBlockCapture(
+            List<NativeVertexRecord> vanillaVertices,
+            List<NativeVertexRecord> candidateVertices) {
     }
 }
