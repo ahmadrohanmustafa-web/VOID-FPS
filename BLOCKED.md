@@ -1,29 +1,32 @@
-# What is NOT implemented, and why
+# Current implementation boundary
 
-Nothing in this project has been compiled against Minecraft 26.3 or run in the game.
-The `dev.voidfps.surface` core is Minecraft-free; it compiles and passes `SelfTest` on plain JDK 21.
+VOID FPS is a client-side Minecraft 26.3 investigation project. The shipped mod remains behavior-neutral: it logs its status and does not replace block or terrain rendering. No FPS gain is claimed.
 
-## Blocked until javap / the 26.3 jar is available
+## Verified in CI
 
-1. **Chunk-compile hook (mixin).** The class and method that iterate blocks while building a section
-   mesh, and the call that renders a block's model, must be found with `javap` on the 26.3 jar.
-   `void_fps_surface.mixins.json` is empty on purpose: no target is invented.
-   Required behaviour: per block, look up a cached SurfacePlan; if present call SurfaceCompiler.emit and
-   skip vanilla's model call for that block (never both); if absent do nothing.
-2. **Adapter: baked model -> ModelInfo/BakedQuadData.** Needs 26.3's model-part / baked-quad accessors
-   (vertex positions, UVs, cull face, light face, tint index, shade flag, sprite) and the per-position
-   variant selection used for weighted variants. Cache by (state, chosen variant).
-3. **Adapter: BlockView.** Map to 26.3 queries for: face occlusion (vanilla shouldRenderFace semantics,
-   incl. unloaded neighbours), packed light incl. emission, AO shade brightness, light-block value,
-   dimension-dependent directional shade.
-4. **Output sink.** Writing vertices into the 26.3 section mesh buffer for the solid layer, in its
-   vertex format and light packing (the core assumes sky in the high 16 bits, block in the low 16).
-5. **ModelInfo flags**: opaqueFullCube, hasBlockEntityRenderer, solidRenderLayer, ambientOcclusionAllowed.
+- The Minecraft 26.3 client boots in the test environment under Xvfb.
+- Test-only fixtures create a disposable world, load a real client chunk, place/restore test blocks, and complete the save/disconnect lifecycle.
+- Native resource-loaded block models are collected through Minecraft's model manager. Resource-pack override tests reload real temporary folder packs and verify conservative eligibility/fallback decisions.
+- The test harness invokes Minecraft's real `ModelBlockRenderer` path for live-world fixtures and captures ordered native vertex records. Repeated vanilla captures are checked for exact equality.
+- The harness compares the candidate's selected native quads and per-block packed vertex output against vanilla for supported full-cube fixtures, neighbour-culling cases, renderer AO/culling flag combinations, and several deterministic model seeds.
+- A separate section-region test captures the real vanilla `SectionCompiler` mesh and checks its vertex format, stride, byte contents, metadata, and repeat-capture stability. This is a vanilla section-mesh capture, not a candidate-generated replacement mesh.
+- Native vertex parity comparison rejects null captures, null records, invalid tolerances, non-finite vertex fields, count mismatches, ordering changes, and packed integer-field differences.
 
-## Must be compared against vanilla output once buildable (`VERIFY-AGAINST-VANILLA`)
-SurfaceLighting: corner-fallback choice, zero-light substitution, light packing, AO brightness values.
-Tests only pin this library's own behaviour, not Minecraft's.
+## Still required before a production optimization
 
-## Out of scope for milestone 1 (stay on vanilla)
-Tinted quads, cutout/translucent layers, non-cube shapes, quads without cull face, multi-quad faces,
-block-entity renderers.
+1. **Candidate section mesh generation.** Implement a test-only candidate path that writes supported block geometry into the actual Minecraft 26.3 section output format, without registering a production mixin.
+2. **Whole-section parity.** Compare vanilla and candidate section meshes using the same world, block states, model seeds, section origin, layer routing, lighting/AO settings, and neighbours. Compare vertex bytes and all relevant mesh metadata; unsupported blocks must remain vanilla-only with no duplicate output.
+3. **Broader fallback proof.** Confirm partial shapes, internal geometry, unculled/multi-quad faces, tint, animated/emissive materials, non-solid layers, block entities, offsets, and resource-pack overrides are rejected before candidate output.
+4. **Visual and performance validation.** Check visual equivalence, then benchmark repeatably on the same scene and hardware. A candidate that is not measurably faster must not ship as an optimization.
+5. **Only after all gates pass:** consider a narrowly scoped, verified production integration point. Never enable an unverified renderer replacement just to make the mod appear active.
+
+## Why the original face-culling idea is not enough
+
+Minecraft 26.3 already caches face-occlusion checks and reuses several lighting/tint calculations. Reimplementing those paths can add overhead or change behaviour. The remaining investigation is limited to proving whether a native-output-compatible geometry path can remove genuinely redundant work.
+
+## Safety rules for the project
+
+- Keep production rendering disabled until whole-section parity and repeatable performance evidence pass.
+- Preserve vanilla rendering for every unsupported or uncertain block/model.
+- Do not weaken tests, skip difficult fixtures, or infer parity from screenshots or a successful client launch.
+- Keep test-only bootstrap, capture, and fixture code out of the shipped JAR.
