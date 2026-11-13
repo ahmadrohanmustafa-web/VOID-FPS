@@ -562,7 +562,7 @@ final class NativeVanillaCaptureTest {
                         continue;
                     }
 
-                    Capture verified = captureVerifiedCandidateOutput(
+                    VerifiedBlockCapture verified = captureVerifiedCandidateOutput(
                             region, blockPos, state, model, seed,
                             "section-shadow-" + x + "-" + y + "-" + z);
                     candidateBlockVertexStarts.add(sectionCandidateVertices.size());
