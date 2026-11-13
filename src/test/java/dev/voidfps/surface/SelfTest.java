@@ -346,6 +346,12 @@ public final class SelfTest {
                 !NativeVertexParity.compare(List.of(a, wrongColor), List.of(wrongColor, a), 0).matches());
         check("native vertex null capture is rejected",
                 !NativeVertexParity.compare(null, List.of(a), 0).matches());
+        check("native vertex missing vanilla record is rejected",
+                !NativeVertexParity.compare(java.util.Arrays.asList((NativeVertexRecord) null),
+                        List.of(a), 0).matches());
+        check("native vertex missing candidate record is rejected",
+                !NativeVertexParity.compare(List.of(a),
+                        java.util.Arrays.asList((NativeVertexRecord) null), 0).matches());
         check("native vertex invalid tolerance is rejected",
                 !NativeVertexParity.compare(List.of(a), List.of(a), Float.NaN).matches());
         check("native vertex NaN is rejected",
