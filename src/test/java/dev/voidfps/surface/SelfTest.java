@@ -161,6 +161,24 @@ public final class SelfTest {
         degenerate.set(0, with(degenerate.get(0), Face.DOWN, Face.DOWN, -1, d));
         check("degenerate quad rejected", !SurfaceEligibility.analyze(cube(degenerate)).supported());
 
+        List<BakedQuadData> nanUv = cubeQuads("g");
+        float[] invalidUv = nanUv.get(0).uvs();
+        invalidUv[3] = Float.NaN;
+        BakedQuadData sourceNanUv = nanUv.get(0);
+        nanUv.set(0, new BakedQuadData(sourceNanUv.lightFace(), sourceNanUv.cullFace(),
+                sourceNanUv.tintIndex(), sourceNanUv.shade(), sourceNanUv.positions(),
+                invalidUv, sourceNanUv.sprite()));
+        check("non-finite UV rejected", !SurfaceEligibility.analyze(cube(nanUv)).supported());
+
+        List<BakedQuadData> infiniteUv = cubeQuads("g");
+        float[] invalidInfiniteUv = infiniteUv.get(0).uvs();
+        invalidInfiniteUv[6] = Float.POSITIVE_INFINITY;
+        BakedQuadData sourceInfiniteUv = infiniteUv.get(0);
+        infiniteUv.set(0, new BakedQuadData(sourceInfiniteUv.lightFace(), sourceInfiniteUv.cullFace(),
+                sourceInfiniteUv.tintIndex(), sourceInfiniteUv.shade(), sourceInfiniteUv.positions(),
+                invalidInfiniteUv, sourceInfiniteUv.sprite()));
+        check("infinite UV rejected", !SurfaceEligibility.analyze(cube(infiniteUv)).supported());
+
         List<BakedQuadData> mismatched = cubeQuads("g");
         mismatched.set(1, with(mismatched.get(1), Face.NORTH, Face.UP, -1, null));
         check("lightFace != cullFace rejected", !SurfaceEligibility.analyze(cube(mismatched)).supported());
