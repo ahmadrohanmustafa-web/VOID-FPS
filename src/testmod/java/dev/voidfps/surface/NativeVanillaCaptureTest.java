@@ -946,7 +946,7 @@ final class NativeVanillaCaptureTest {
                 Blocks.GLOWSTONE.defaultBlockState(),
                 Blocks.MAGMA_BLOCK.defaultBlockState(),
                 Blocks.END_ROD.defaultBlockState(),
-                Blocks.COPPER_DOOR.defaultBlockState(),
+                Blocks.IRON_DOOR.defaultBlockState(),
                 Blocks.SCAFFOLDING.defaultBlockState()
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
