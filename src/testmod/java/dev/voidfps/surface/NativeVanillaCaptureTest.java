@@ -939,7 +939,15 @@ final class NativeVanillaCaptureTest {
                 // Fluids are not eligible block models; they must remain on vanilla's
                 // independent fluid tessellation path through section compilation.
                 Blocks.WATER.defaultBlockState(),
-                Blocks.LAVA.defaultBlockState()
+                Blocks.LAVA.defaultBlockState(),
+                // More conservative-fallback classes: translucent, emissive, thin,
+                // multi-part, and connected geometry. None may enter the full-cube path.
+                Blocks.ICE.defaultBlockState(),
+                Blocks.GLOWSTONE.defaultBlockState(),
+                Blocks.MAGMA_BLOCK.defaultBlockState(),
+                Blocks.END_ROD.defaultBlockState(),
+                Blocks.CHAIN.defaultBlockState(),
+                Blocks.SCAFFOLDING.defaultBlockState()
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
         Map<BlockPos, BlockState> expectedFallbackFixtures = new LinkedHashMap<>();
@@ -951,14 +959,15 @@ final class NativeVanillaCaptureTest {
 
         try {
             for (int index = 0; index < fallbackStates.length; index++) {
-                // Keep fixtures on three separated rows. Every fixture has its
-                // own six-neighbour air space; row separation prevents one fixture's
-                // neighbour clearing from changing another fixture.
+                // Keep fixtures in four separated rows/levels. Every fixture gets
+                // a six-neighbour test space; separation limits cross-fixture interference.
                 BlockPos fixture = index < 6
                         ? new BlockPos(minX + 2 + index * 2, minY + 1, minZ + 2)
                         : index < 10
                                 ? new BlockPos(minX + 2 + (index - 6) * 3, minY + 1, minZ + 6)
-                                : new BlockPos(minX + 1 + (index - 10) * 2, minY + 1, minZ + 10);
+                                : index < 18
+                                        ? new BlockPos(minX + 1 + (index - 10) * 2, minY + 1, minZ + 10)
+                                        : new BlockPos(minX + 2 + (index - 18) * 2, minY + 5, minZ + 14);
                 expectedFallbackFixtures.put(fixture, fallbackStates[index]);
                 previousStates.put(fixture, level.getBlockState(fixture));
                 // Give every fallback model an unobstructed six-neighbour test space.
