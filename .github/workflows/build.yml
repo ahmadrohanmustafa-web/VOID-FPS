@@ -78,7 +78,7 @@ jobs:
           grep -Fq 'state=Block{minecraft:glowstone}' build/void-fps-client-smoke.log
           grep -Fq 'state=Block{minecraft:magma_block}' build/void-fps-client-smoke.log
           grep -Fq 'state=Block{minecraft:end_rod}' build/void-fps-client-smoke.log
-          grep -Fq 'state=Block{minecraft:copper_grate}' build/void-fps-client-smoke.log
+          grep -Fq 'state=Block{minecraft:copper_door}' build/void-fps-client-smoke.log
           grep -Fq 'state=Block{minecraft:scaffolding}' build/void-fps-client-smoke.log
           grep -q "VOID FPS test world disconnected through normal save lifecycle" build/void-fps-client-smoke.log
           echo "Minecraft client loaded VOID FPS and passed native vertex-output and resource-loaded block-model checks."
