@@ -727,6 +727,7 @@ final class NativeVanillaCaptureTest {
         int visitedNonAir = 0;
         int eligible = 0;
         int fallback = 0;
+        int fluidFallback = 0;
         java.util.Set<BlockPos> observedExpectedFallbackPositions = new java.util.LinkedHashSet<>();
         int comparedVertexRecords = 0;
         List<NativeVertexRecord> sectionVanillaVertices = new ArrayList<>();
@@ -742,6 +743,25 @@ final class NativeVanillaCaptureTest {
                         continue;
                     }
                     visitedNonAir++;
+
+                    // Fluids are a separate SectionCompiler input, not block-model geometry.
+                    // Never let a block candidate consume a fluid-bearing state: preserve
+                    // the position for vanilla's native fluid tessellation path.
+                    if (!state.getFluidState().isEmpty()) {
+                        fallback++;
+                        fluidFallback++;
+                        BlockState expectedFixtureState = expectedFallbackFixtures.get(blockPos);
+                        if (expectedFixtureState != null) {
+                            if (!state.equals(expectedFixtureState)) {
+                                throw new IllegalStateException(
+                                        "Section snapshot changed a deliberate fluid fallback fixture at "
+                                                + blockPos + ": expected=" + expectedFixtureState
+                                                + ", actual=" + state);
+                            }
+                            observedExpectedFallbackPositions.add(blockPos);
+                        }
+                        continue;
+                    }
 
                     BlockStateModel model = minecraft.getModelManager()
                             .getBlockStateModelSet().get(state);
@@ -872,6 +892,7 @@ final class NativeVanillaCaptureTest {
         System.out.println("VOID FPS candidate section shadow traversal passed: section="
                 + sectionPos + ", nonAirBlocks=" + visitedNonAir
                 + ", eligibleBlocks=" + eligible + ", vanillaFallbackBlocks=" + fallback
+                + ", fluidFallbackBlocks=" + fluidFallback
                 + ", expectedFallbackFixtures=" + expectedFallbackFixtures.size()
                 + ", matchedExpectedFallbackFixtures=" + observedExpectedFallbackPositions.size()
                 + ", candidateVertexRecordsCompared=" + comparedVertexRecords
@@ -914,7 +935,11 @@ final class NativeVanillaCaptureTest {
                 Blocks.LANTERN.defaultBlockState(),
                 Blocks.COBBLESTONE_WALL.defaultBlockState(),
                 Blocks.BELL.defaultBlockState(),
-                Blocks.FLOWER_POT.defaultBlockState()
+                Blocks.FLOWER_POT.defaultBlockState(),
+                // Fluids are not eligible block models; they must remain on vanilla's
+                // independent fluid tessellation path through section compilation.
+                Blocks.WATER.defaultBlockState(),
+                Blocks.LAVA.defaultBlockState()
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
         Map<BlockPos, BlockState> expectedFallbackFixtures = new LinkedHashMap<>();
@@ -1045,8 +1070,17 @@ final class NativeVanillaCaptureTest {
             MeshSnapshot translucentMesh = mixedMeshes.get(ChunkSectionLayer.TRANSLUCENT);
             if (translucentMesh == null || translucentMesh.metadata().vertexCount() <= 0) {
                 throw new IllegalStateException(
-                        "Glass-pane fallback fixture did not produce a non-empty vanilla translucent mesh: "
+                        "Glass-pane/water fallback fixtures did not produce a non-empty vanilla translucent mesh: "
                                 + mixedMeshes.keySet());
+            }
+            int expectedFluidFixtures = 0;
+            for (BlockState fixtureState : fallbackStates) {
+                if (!fixtureState.getFluidState().isEmpty()) expectedFluidFixtures++;
+            }
+            if (expectedFluidFixtures != 2) {
+                throw new IllegalStateException(
+                        "Fluid fallback fixture matrix is incomplete: expectedWaterAndLava=2, actual="
+                                + expectedFluidFixtures);
             }
             System.out.println("VOID FPS mixed vanilla section mesh delta passed: "
                     + "baselineLayers=" + baselineMeshes.size()
