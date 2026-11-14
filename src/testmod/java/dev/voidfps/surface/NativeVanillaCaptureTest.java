@@ -957,7 +957,7 @@ final class NativeVanillaCaptureTest {
                         ? new BlockPos(minX + 2 + index * 2, minY + 1, minZ + 2)
                         : index < 10
                                 ? new BlockPos(minX + 2 + (index - 6) * 3, minY + 1, minZ + 6)
-                                : new BlockPos(minX + 2 + (index - 10) * 2, minY + 1, minZ + 10);
+                                : new BlockPos(minX + 1 + (index - 10) * 2, minY + 1, minZ + 10);
                 expectedFallbackFixtures.put(fixture, fallbackStates[index]);
                 previousStates.put(fixture, level.getBlockState(fixture));
                 // Give every fallback model an unobstructed six-neighbour test space.
