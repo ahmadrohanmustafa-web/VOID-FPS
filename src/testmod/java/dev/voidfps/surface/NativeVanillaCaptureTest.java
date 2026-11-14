@@ -682,10 +682,24 @@ final class NativeVanillaCaptureTest {
                     VerifiedBlockCapture verified = captureVerifiedCandidateOutput(
                             region, blockPos, state, model, seed,
                             "section-shadow-" + x + "-" + y + "-" + z);
-                    candidateBlockVertexStarts.add(sectionCandidateVertices.size());
+                    int vanillaBlockVertexCount = verified.vanillaVertices().size();
+                    int candidateBlockVertexCount = verified.candidateVertices().size();
+                    if (vanillaBlockVertexCount != candidateBlockVertexCount
+                            || candidateBlockVertexCount % 4 != 0) {
+                        throw new IllegalStateException(
+                                "Candidate eligible-block output has invalid per-block accounting: block="
+                                        + blockPos + ", vanillaVertices=" + vanillaBlockVertexCount
+                                        + ", candidateVertices=" + candidateBlockVertexCount);
+                    }
+                    // A geometrically eligible block can be completely occluded by its neighbours.
+                    // Its exact per-block parity is still checked above, but it contributes no
+                    // vertex range to the aggregate stream and must not create an empty range.
+                    if (candidateBlockVertexCount > 0) {
+                        candidateBlockVertexStarts.add(sectionCandidateVertices.size());
+                    }
                     sectionVanillaVertices.addAll(verified.vanillaVertices());
                     sectionCandidateVertices.addAll(verified.candidateVertices());
-                    comparedVertexRecords += verified.candidateVertices().size();
+                    comparedVertexRecords += candidateBlockVertexCount;
                     eligible++;
                 }
             }
