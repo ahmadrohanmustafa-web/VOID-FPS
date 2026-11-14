@@ -943,6 +943,7 @@ final class NativeVanillaCaptureTest {
         };
         Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
         Map<BlockPos, BlockState> expectedFallbackFixtures = new LinkedHashMap<>();
+        int fluidFixturesVerified = 0;
         previousStates.put(origin, level.getBlockState(origin));
         if (!previousStates.get(origin).equals(expectedOriginState)) {
             throw new IllegalStateException("Mixed section fixture origin changed before setup");
@@ -981,6 +982,19 @@ final class NativeVanillaCaptureTest {
                 }
 
                 BlockState fixtureState = level.getBlockState(fixture);
+                // Fluid blocks are tessellated by SectionCompiler's fluid path, not by
+                // ModelBlockRenderer. Verify their fluid state here and leave their
+                // actual geometry validation to the captured native section-layer mesh.
+                if (!fixtureState.getFluidState().isEmpty()) {
+                    if (!fixtureState.equals(fallbackStates[index])) {
+                        throw new IllegalStateException(
+                                "Fluid fallback fixture changed during placement: expected="
+                                        + fallbackStates[index] + ", actual=" + fixtureState);
+                    }
+                    fluidFixturesVerified++;
+                    continue;
+                }
+
                 BlockStateModel fixtureModel = Minecraft.getInstance()
                         .getModelManager().getBlockStateModelSet().get(fixtureState);
                 if (fixtureModel == null) {
@@ -1067,6 +1081,13 @@ final class NativeVanillaCaptureTest {
                                     + ", mixed=" + mixedMetadata);
                 }
             }
+            if (fluidFixturesVerified != 2) {
+                throw new IllegalStateException(
+                        "Fluid fixtures were not both verified through the fluid-state path: expected=2, actual="
+                                + fluidFixturesVerified);
+            }
+            System.out.println("VOID FPS fluid fallback fixtures passed: verified="
+                    + fluidFixturesVerified + ", path=vanilla-fluid-section-tessellation");
             MeshSnapshot translucentMesh = mixedMeshes.get(ChunkSectionLayer.TRANSLUCENT);
             if (translucentMesh == null || translucentMesh.metadata().vertexCount() <= 0) {
                 throw new IllegalStateException(
