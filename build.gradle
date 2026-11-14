@@ -93,3 +93,43 @@ loom {
         }
     }
 }
+
+/**
+ * Release-safety gate: Minecraft-dependent recorder fixtures and the dedicated
+ * test mod must never leak into the production artifact.
+ */
+tasks.register('verifyProductionJarIsolation') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def productionJar = tasks.named('jar').get().archiveFile.get().asFile
+        def archive = zipTree(productionJar)
+        def testClasses = archive.matching {
+            include '**/*Test*.class'
+            include '**/testmod/**'
+        }.files
+        if (!testClasses.isEmpty()) {
+            throw new GradleException(
+                    "Production JAR contains test-only classes: "
+                            + testClasses.collect { it.name }.sort())
+        }
+
+        def metadataFiles = archive.matching {
+            include 'fabric.mod.json'
+        }.files
+        if (metadataFiles.size() != 1) {
+            throw new GradleException(
+                    "Expected exactly one production fabric.mod.json, found "
+                            + metadataFiles.size())
+        }
+        def metadata = metadataFiles.first().getText('UTF-8')
+        if (metadata.contains('voidfps-test') || metadata.contains('testmod')) {
+            throw new GradleException(
+                    "Production fabric.mod.json references the test-only mod")
+        }
+        logger.lifecycle(
+                "VOID FPS production JAR isolation passed: testOnlyClasses=0, "
+                        + "testModMetadata=false, artifact=" + productionJar.name)
+    }
+}
+
+check.dependsOn tasks.named('verifyProductionJarIsolation')
