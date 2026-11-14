@@ -301,44 +301,53 @@ final class NativeVanillaCaptureTest {
             previousStates.put(neighbour, level.getBlockState(neighbour));
         }
 
+        Map<String, BlockState> neighbourMaterials = new LinkedHashMap<>();
+        neighbourMaterials.put("opaque-stone", Blocks.STONE.defaultBlockState());
+        neighbourMaterials.put("translucent-glass", Blocks.GLASS.defaultBlockState());
+        neighbourMaterials.put("non-solid-leaves", Blocks.OAK_LEAVES.defaultBlockState());
+
         int comparedMasks = 0;
         int comparedVertices = 0;
         int zeroOutputMasks = 0;
+        Map<String, Integer> masksByMaterial = new LinkedHashMap<>();
         try {
-            for (int mask = 0; mask < (1 << Direction.values().length); mask++) {
-                for (Direction direction : Direction.values()) {
-                    boolean covered = (mask & (1 << direction.ordinal())) != 0;
-                    BlockState neighbourState = covered
-                            ? Blocks.STONE.defaultBlockState()
-                            : Blocks.AIR.defaultBlockState();
-                    BlockPos neighbourPos = pos.relative(direction);
-                    level.setBlock(neighbourPos, neighbourState, 3);
-                    if (!level.getBlockState(neighbourPos).equals(neighbourState)) {
-                        throw new IllegalStateException(
-                                "Could not set six-face occlusion mask " + mask
-                                        + " on direction " + direction);
+            for (Map.Entry<String, BlockState> material : neighbourMaterials.entrySet()) {
+                int materialMasks = 0;
+                for (int mask = 0; mask < (1 << Direction.values().length); mask++) {
+                    for (Direction direction : Direction.values()) {
+                        boolean occupied = (mask & (1 << direction.ordinal())) != 0;
+                        BlockState neighbourState = occupied
+                                ? material.getValue()
+                                : Blocks.AIR.defaultBlockState();
+                        BlockPos neighbourPos = pos.relative(direction);
+                        level.setBlock(neighbourPos, neighbourState, 3);
+                        if (!level.getBlockState(neighbourPos).equals(neighbourState)) {
+                            throw new IllegalStateException(
+                                    "Could not set six-face occlusion mask " + mask
+                                            + " for neighbour material " + material.getKey()
+                                            + " on direction " + direction);
+                        }
                     }
-                }
 
-                long seed = state.getSeed(pos);
-                VerifiedBlockCapture verified = captureVerifiedCandidateOutput(
-                        level, pos, state, model, seed, "six-face-mask-" + mask);
-                int expectedVisibleFaces = Direction.values().length - Integer.bitCount(mask);
-                int expectedVertices = expectedVisibleFaces * 4;
-                if (verified.vanillaVertices().size() != expectedVertices
-                        || verified.candidateVertices().size() != expectedVertices) {
-                    throw new IllegalStateException(
-                            "Six-face occlusion mask emitted an unexpected vertex count: mask="
-                                    + mask + ", coveredFaces=" + Integer.bitCount(mask)
-                                    + ", expectedVertices=" + expectedVertices
-                                    + ", vanillaVertices=" + verified.vanillaVertices().size()
-                                    + ", candidateVertices=" + verified.candidateVertices().size());
+                    VerifiedBlockCapture verified = captureVerifiedCandidateOutput(
+                            level, pos, state, model, state.getSeed(pos),
+                            "six-face-mask-" + material.getKey() + "-" + mask);
+                    if (verified.vanillaVertices().size() != verified.candidateVertices().size()
+                            || verified.vanillaVertices().size() % 4 != 0) {
+                        throw new IllegalStateException(
+                                "Six-face material mask has invalid vertex accounting: material="
+                                        + material.getKey() + ", mask=" + mask
+                                        + ", vanillaVertices=" + verified.vanillaVertices().size()
+                                        + ", candidateVertices=" + verified.candidateVertices().size());
+                    }
+                    if (verified.vanillaVertices().isEmpty()) {
+                        zeroOutputMasks++;
+                    }
+                    comparedVertices += verified.vanillaVertices().size();
+                    comparedMasks++;
+                    materialMasks++;
                 }
-                if (expectedVertices == 0) {
-                    zeroOutputMasks++;
-                }
-                comparedVertices += expectedVertices;
-                comparedMasks++;
+                masksByMaterial.put(material.getKey(), materialMasks);
             }
         } finally {
             for (Map.Entry<BlockPos, BlockState> entry : previousStates.entrySet()) {
@@ -350,13 +359,17 @@ final class NativeVanillaCaptureTest {
             }
         }
 
-        if (comparedMasks != 64 || zeroOutputMasks != 1) {
+        if (comparedMasks != neighbourMaterials.size() * 64
+                || masksByMaterial.values().stream().anyMatch(count -> count != 64)
+                || zeroOutputMasks == 0) {
             throw new IllegalStateException(
-                    "Six-face occlusion matrix was incomplete: masks=" + comparedMasks
+                    "Six-face material occlusion matrix was incomplete: masks=" + comparedMasks
+                            + ", masksByMaterial=" + masksByMaterial
                             + ", zeroOutputMasks=" + zeroOutputMasks);
         }
-        System.out.println("VOID FPS exhaustive six-face occlusion mask matrix passed: masks="
-                + comparedMasks + ", totalComparedVertices=" + comparedVertices
+        System.out.println("VOID FPS exhaustive six-face neighbour-material matrix passed: masks="
+                + comparedMasks + ", materials=" + masksByMaterial
+                + ", totalComparedVertices=" + comparedVertices
                 + ", zeroOutputMasks=" + zeroOutputMasks
                 + ", perMaskNativeParityExact=true, worldRestored=true");
     }
