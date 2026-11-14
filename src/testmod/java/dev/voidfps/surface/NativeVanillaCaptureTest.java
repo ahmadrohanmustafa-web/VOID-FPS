@@ -83,6 +83,7 @@ final class NativeVanillaCaptureTest {
                 + ", repeatedCaptureExact=true");
 
         verifyCandidateFaceSelection(level, pos, state, model, seed, first.quads());
+        verifyAllSixFaceOcclusionMasks(level, pos, state, model);
         verifyRendererFlagParity(level, pos, state, model, seed);
         verifyNativeWorldFaceCulling(level, pos, state, model, seed);
         verifyAdditionalFullCubeModels(level, pos);
@@ -281,6 +282,83 @@ final class NativeVanillaCaptureTest {
                 }
             }
         }
+    }
+
+    /**
+     * Exhaustively exercises all 64 combinations of the six neighbouring faces.
+     * This includes isolated faces, every partial-occlusion pattern, and the fully
+     * enclosed zero-output case. Each case compares native vanilla and candidate
+     * vertex records plus ordered quad metadata, with all world changes restored.
+     */
+    private static void verifyAllSixFaceOcclusionMasks(
+            ClientLevel level,
+            BlockPos pos,
+            BlockState state,
+            BlockStateModel model) {
+        Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbour = pos.relative(direction);
+            previousStates.put(neighbour, level.getBlockState(neighbour));
+        }
+
+        int comparedMasks = 0;
+        int comparedVertices = 0;
+        int zeroOutputMasks = 0;
+        try {
+            for (int mask = 0; mask < (1 << Direction.values().length); mask++) {
+                for (Direction direction : Direction.values()) {
+                    boolean covered = (mask & (1 << direction.ordinal())) != 0;
+                    BlockState neighbourState = covered
+                            ? Blocks.STONE.defaultBlockState()
+                            : Blocks.AIR.defaultBlockState();
+                    BlockPos neighbourPos = pos.relative(direction);
+                    level.setBlock(neighbourPos, neighbourState, 3);
+                    if (!level.getBlockState(neighbourPos).equals(neighbourState)) {
+                        throw new IllegalStateException(
+                                "Could not set six-face occlusion mask " + mask
+                                        + " on direction " + direction);
+                    }
+                }
+
+                long seed = state.getSeed(pos);
+                VerifiedBlockCapture verified = captureVerifiedCandidateOutput(
+                        level, pos, state, model, seed, "six-face-mask-" + mask);
+                int expectedVisibleFaces = Direction.values().length - Integer.bitCount(mask);
+                int expectedVertices = expectedVisibleFaces * 4;
+                if (verified.vanillaVertices().size() != expectedVertices
+                        || verified.candidateVertices().size() != expectedVertices) {
+                    throw new IllegalStateException(
+                            "Six-face occlusion mask emitted an unexpected vertex count: mask="
+                                    + mask + ", coveredFaces=" + Integer.bitCount(mask)
+                                    + ", expectedVertices=" + expectedVertices
+                                    + ", vanillaVertices=" + verified.vanillaVertices().size()
+                                    + ", candidateVertices=" + verified.candidateVertices().size());
+                }
+                if (expectedVertices == 0) {
+                    zeroOutputMasks++;
+                }
+                comparedVertices += expectedVertices;
+                comparedMasks++;
+            }
+        } finally {
+            for (Map.Entry<BlockPos, BlockState> entry : previousStates.entrySet()) {
+                level.setBlock(entry.getKey(), entry.getValue(), 3);
+                if (!level.getBlockState(entry.getKey()).equals(entry.getValue())) {
+                    throw new IllegalStateException(
+                            "Could not restore six-face occlusion fixture neighbour at " + entry.getKey());
+                }
+            }
+        }
+
+        if (comparedMasks != 64 || zeroOutputMasks != 1) {
+            throw new IllegalStateException(
+                    "Six-face occlusion matrix was incomplete: masks=" + comparedMasks
+                            + ", zeroOutputMasks=" + zeroOutputMasks);
+        }
+        System.out.println("VOID FPS exhaustive six-face occlusion mask matrix passed: masks="
+                + comparedMasks + ", totalComparedVertices=" + comparedVertices
+                + ", zeroOutputMasks=" + zeroOutputMasks
+                + ", perMaskNativeParityExact=true, worldRestored=true");
     }
 
     private static List<QuadSignature> candidateVisibleQuads(
