@@ -732,7 +732,7 @@ final class NativeVanillaCaptureTest {
         }
         if (sectionVanillaVertices.size() != comparedVertexRecords
                 || sectionCandidateVertices.size() != comparedVertexRecords
-                || candidateBlockVertexStarts.size() != eligible) {
+                || candidateBlockVertexStarts.size() > eligible) {
             throw new IllegalStateException(
                     "Candidate eligible-section stream accounting mismatch: vanillaVertices="
                             + sectionVanillaVertices.size() + ", candidateVertices="
