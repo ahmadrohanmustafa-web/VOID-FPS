@@ -72,7 +72,7 @@ jobs:
           test "$(grep -Fc 'VOID FPS additional full-cube native parity passed: state=' build/void-fps-client-smoke.log)" -eq 20
           test "$(grep -Fc 'deterministicSeeds=4' build/void-fps-client-smoke.log)" -eq 20
           grep -q "VOID FPS fluid fallback fixtures passed: verified=2, path=vanilla-fluid-section-tessellation" build/void-fps-client-smoke.log
-          grep -q "VOID FPS mixed vanilla section fixture passed: deliberateFallbackFixtures=24," build/void-fps-client-smoke.log
+          grep -q "VOID FPS mixed-eligibility section fixture passed: deliberateFallbackFixtures=24, sectionFallbackBlocks=24, individuallyVerifiedFixtures=24, vanillaFallbackRequired=true" build/void-fps-client-smoke.log
           test "$(grep -Fc 'VOID FPS expected vanilla fallback classification passed:' build/void-fps-client-smoke.log)" -eq 22
           grep -Fq 'state=Block{minecraft:ice}' build/void-fps-client-smoke.log
           grep -Fq 'state=Block{minecraft:glowstone}' build/void-fps-client-smoke.log
