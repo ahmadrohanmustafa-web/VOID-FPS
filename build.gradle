@@ -126,9 +126,34 @@ tasks.register('verifyProductionJarIsolation') {
             throw new GradleException(
                     "Production fabric.mod.json references the test-only mod")
         }
+
+        // Rendering hooks are intentionally not shipped until a Minecraft 26.3
+        // injection point and full-section parity have both been proven.
+        def metadataObject = new groovy.json.JsonSlurper().parseText(metadata)
+        if (metadataObject.containsKey('mixins')) {
+            throw new GradleException(
+                    "Production mod metadata declares mixins before renderer verification")
+        }
+        def mixinConfigs = archive.matching {
+            include '*.mixins.json'
+            include '**/*.mixins.json'
+        }.files
+        if (!mixinConfigs.isEmpty()) {
+            throw new GradleException(
+                    "Production JAR contains unapproved mixin configuration: "
+                            + mixinConfigs.collect { it.name }.sort())
+        }
+        def entrypoint = archive.matching {
+            include 'dev/voidfps/client/VoidFpsClient.class'
+        }.files
+        if (entrypoint.size() != 1) {
+            throw new GradleException(
+                    "Production JAR is missing its single expected client entrypoint")
+        }
         logger.lifecycle(
-                "VOID FPS production JAR isolation passed: testOnlyClasses=0, "
-                        + "testModMetadata=false, artifact=" + productionJar.name)
+                "VOID FPS production JAR safety passed: testOnlyClasses=0, "
+                        + "testModMetadata=false, mixinConfigs=0, "
+                        + "clientEntrypoint=1, artifact=" + productionJar.name)
     }
 }
 
